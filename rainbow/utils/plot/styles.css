@@ -1,0 +1,21 @@
+QWidget {
+    background-color: #222;
+    color: #aaa;
+    font-family: "Hack";
+    font: 16px;
+    padding: 0;
+    border: none;
+}
+QListWidget {
+    font: 14px;
+}
+QListWidget:selected {
+    background-color: #0078cb;
+}
+QListWidget:current {
+    background-color: #0078cb;
+}
+
+QFrame {
+    border: 1px solid #00688B;
+}
