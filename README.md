@@ -47,13 +47,13 @@ e.load('file', typ='.elf')
 
 File type is guessed on the extension when possible (.elf, .hex).
 
-Starting the emulation is done
+Starting the emulation is done like so:
 
 ```python
 e.start(start_address, stop_address, count=number_of_instructions)
 ```
 
-Just like with unicorn. The underlying Unicorn instance is always available as `e.emu`
+Just like with unicorn. The underlying Unicorn instance is always available as `e.emu`.
 
 ## Side-Channel simulation
 

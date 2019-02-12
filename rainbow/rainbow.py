@@ -276,10 +276,10 @@ class rainbowBase:
         """
         if self.trace:
             if self.reg_leak is not None:
-                x = self.reg_leak[1]
-                if x not in self.TRACE_DISCARD:
-                    self.sca_address_trace.append(self.reg_leak[0])
-                    self.sca_values_trace.append(self[x])
+                for x in self.reg_leak[1]:
+                    if x not in self.TRACE_DISCARD:
+                        self.sca_address_trace.append(self.reg_leak[0])
+                        self.sca_values_trace.append(self[x])
 
             self.reg_leak = None
 
@@ -288,9 +288,9 @@ class rainbowBase:
             if len(regs_written) > 0:
                 self.reg_leak = (
                     f"{address:8X} {ins.mnemonic:<6}  {ins.op_str}",
-                    ins.reg_name(regs_written[0]),
+                    list(map(ins.reg_name, regs_written))
                 )
-
+          
     def code_trace(self, uci, address, size, data):
         """ 
         Hook that traces modified register values in side-channel mode. 
@@ -305,7 +305,6 @@ class rainbowBase:
 
         if self.trace:
             if self.reg_leak is not None:
-                x = self.reg_leak[1][0]
                 for x in self.reg_leak[1]:
                     print(f" {x} = {self[x]:08x} ", end="")
 
