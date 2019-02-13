@@ -86,7 +86,7 @@ Disadvantages :
 As a whitebox example (available in `examples/OAES`, below is the result of the variance of [SECCON 2016's OAES](https://github.com/SECCON/SECCON2016_online_CTF/tree/master/Binary/500_Obfuscated%20AES) encryption function, which has a heavy control flow obfuscation. 
 One can clearly see the 10 rounds of the AES despite this obfuscation :
 
-[OAES Variance](./OAES_variance.jpg)
+![OAES Variance](./OAES_variance.jpg)
 
 
 ## Supported archs
