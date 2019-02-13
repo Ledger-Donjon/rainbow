@@ -36,7 +36,7 @@ Grab a device or generic emulator like so
 from rainbow.devices import rainbow_stm32f215
 from rainbow.generics import rainbow_x86
 
-e = rainbow_(sca_mode=False)
+e = rainbow_stm32f215(sca_mode=False)
 ```
 
 Loading a binary
