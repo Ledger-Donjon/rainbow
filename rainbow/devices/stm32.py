@@ -35,7 +35,7 @@ class rainbow_stm32f215(rainbow_cortexm):
     INTERNAL = (0xE0000000, 0xFFFFFFFF)
     STACK_ADDR = RAM[1]
 
-    def __init__(self, trace=True, sca_mode=False, local_vars=[]):
+    def __init__(self, trace=True, sca_mode=False, local_vars={}):
         super().__init__(trace, sca_mode)
         self.stubbed_functions = local_vars
 

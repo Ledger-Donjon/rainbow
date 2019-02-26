@@ -55,7 +55,7 @@ class rainbowBase:
         self.mem_trace = False
         self.function_calls = False
         self.trace_regs = False
-        self.stubbed_functions = []
+        self.stubbed_functions = {}
 
         self.sca_mode = sca_mode
 
