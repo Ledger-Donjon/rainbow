@@ -46,12 +46,9 @@ class rainbow_stm32f215(rainbow_cortexm):
 
         ## Get register dictionary (dumped from .svd file)
         if self.OTHER_REGS_NAMES is None:
-            regs_pickle = pkg_resources.resource_filename(__name__, "/stm32f215.pickle")
-            with open(regs_pickle, "rb") as f:
-                self.OTHER_REGS_NAMES = pickle.load(f)
-            self.OTHER_REGS = {
-                self.OTHER_REGS_NAMES[x]: x for x in self.OTHER_REGS_NAMES.keys()
-            }
+            regs_pickle = pkg_resources.resource_filename(
+                __name__, "/stm32f215.pickle")
+            self.load_other_regs_from_pickle(regs_pickle)
 
         ## Map specific memory regions
         self.map_space(*self.FLASH)
@@ -59,3 +56,12 @@ class rainbow_stm32f215(rainbow_cortexm):
         self.map_space(*self.FSMC)
         self.map_space(*self.PERIPHERALS)
         self.map_space(*self.INTERNAL)
+
+
+class rainbow_stm32l431(rainbow_cortexm):
+    def __init__(self, trace=True, sca_mode=False, local_vars={}):
+        super().__init__(trace, sca_mode)
+        import pkg_resources
+        regs_pickle = pkg_resources.resource_filename(
+            __name__, '/stm32l4x1.pickle')
+        self.load_other_regs_from_pickle(regs_pickle)

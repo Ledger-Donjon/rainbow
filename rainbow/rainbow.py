@@ -141,9 +141,14 @@ class rainbowBase:
             raise Exception("Unhandled value type", type(val))
 
         if isinstance(inp, str):  # regname
-            self.emu.reg_write(
-                eval(self.uc_reg + inp.upper()), int.from_bytes(value, self.endianness)
-            )  ##thank you unicorn
+            v = self.OTHER_REGS_NAMES.get(inp, None)
+            if v is not None:
+                self.map_space(v, v + length)
+                self.emu.mem_write(v, value)
+            else:
+                self.emu.reg_write(
+                    eval(self.uc_reg + inp.upper()),
+                    int.from_bytes(value, self.endianness))  ##thank you unicorn
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
             self.emu.mem_write(inp, value)
@@ -162,7 +167,11 @@ class rainbowBase:
     def __getitem__(self, s):
         """ Reads from a register using its shortname, or from a memory address/region. """
         if isinstance(s, str):  # regname
-            return self.emu.reg_read(eval(self.uc_reg + s.upper()))
+            v = self.OTHER_REGS_NAMES.get(s, None)
+            if v is not None:
+                return self.emu[v]
+            else:
+                return self.emu.reg_read(eval(self.uc_reg + s.upper()))
         elif isinstance(s, int):
             if s & 3:
                 size = 1
@@ -349,3 +358,15 @@ class rainbowBase:
                 r = self.stubbed_functions[f](self)
                 if r:
                     self.return_force()
+
+    def load_other_regs_from_pickle(self, filename):
+        """
+        Load OTHER_REGS and OTHER_REGS_NAMES from a dictionary in a pickle file.
+        :param filename: pickle file path.
+        """
+        import pickle
+        with open(filename, 'rb') as f:
+            self.OTHER_REGS_NAMES = pickle.load(f)
+        self.OTHER_REGS = {
+            self.OTHER_REGS_NAMES[x]: x for x in self.OTHER_REGS_NAMES.keys()
+        }
