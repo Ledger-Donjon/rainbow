@@ -6,15 +6,21 @@ Using [Unicorn](http://www.unicorn-engine.org/) as a basis, Rainbow aims to prov
 
 This is to allow quick and easy testing of physical attack resistance of code snippets, in order to help developers have a first evaluation of the resistance of their code.
 
+An introduction is available [here](https://medium.com/ledger-on-security-and-blockchain/introducing-rainbow-donjons-side-channel-analysis-simulation-tool-2f23fa1f11b3).
+
 ## Installation
 
-- `setup.py install`
+You will need Python 3.6 at least.
+
+- `python3 setup.py install`
 
 If Unicorn or Capstone fails to install somehow :
 - Unicorn : http://www.unicorn-engine.org/download/
 - Capstone : https://www.capstone-engine.org/
 
 For the side-channel examples, you need to grab the latest [Lascar](https://github.com/Ledger-Donjon/lascar)
+
+If you wish to use another version of Python, you can drop an issue and will look into it.
 
 ## Running the examples
 
