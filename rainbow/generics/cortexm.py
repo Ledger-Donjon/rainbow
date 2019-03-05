@@ -1,6 +1,6 @@
 # This file is part of rainbow 
 #
-# PyPDM is free software: you can redistribute it and/or modify
+# rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
@@ -29,7 +29,7 @@ class rainbow_cortexm(rainbowBase):
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
     TRACE_DISCARD = []
 
-    def __init__(self, trace=True, sca_mode=False, local_vars=[]):
+    def __init__(self, trace=True, sca_mode=False, local_vars={}):
         super().__init__(trace, sca_mode)
         self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_THUMB | uc.UC_MODE_MCLASS)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_THUMB | cs.CS_MODE_MCLASS)
