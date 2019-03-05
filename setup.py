@@ -1,6 +1,6 @@
 # This file is part of rainbow 
 #
-# PyPDM is free software: you can redistribute it and/or modify
+# rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
@@ -22,8 +22,8 @@ setup(
     name="rainbow",
     install_requires=[
         "unicorn",
-        "capstone",
-        "lief",
+        "capstone>=4.0.0",
+        "lief>=0.9.0",
         "intelhex",
         "colorama",
         "pygments",
