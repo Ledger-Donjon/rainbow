@@ -24,6 +24,6 @@ e[0x404100] = bytes(p)
 e["eax"] = 0x2E
 
 # Call function
-e.start(0x4010D1, 0x401280)
+e.start(0x4010D1, 0x401280, count=25)
 
 print("\nFlag is :", e[0x404100 : 0x404100 + 0x2E].decode("utf8"))
