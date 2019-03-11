@@ -18,6 +18,7 @@
 
 import unicorn as uc
 import capstone as cs
+from struct import unpack
 from rainbow.rainbow import rainbowBase
 from rainbow.color_functions import color
 
@@ -45,8 +46,34 @@ class rainbow_cortexm(rainbowBase):
         self.setup(sca_mode)
 
         self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
-        self.emu.reg_write(uc.arm_const.UC_ARM_REG_FP, self.STACK_ADDR)
         self.emu.reg_write(uc.arm_const.UC_ARM_REG_APSR, 0)
+
+        # Force mapping of those addresses so that
+        # exception returns can be caught in the base
+        # block hook rather than a code fetch hook
+        self[0xfffffff0] = 0
+
+        self.emu.hook_add(uc.UC_HOOK_INTR, self.intr_hook)
+
+    def intr_hook(self, uci, intno, data):
+        # Hack : pretend this is all exceptions at once
+        self['ipsr'] = 0xfffffff
+
+        sp = self["sp"] - 32
+        self["sp"] = sp
+        self[sp +  0] = self["r0"]
+        self[sp +  4] = self["r1"]
+        self[sp +  8] = self["r2"]
+        self[sp + 12] = self["r3"]
+        self[sp + 16] = self["r12"]
+        self[sp + 20] = self["r14"]
+        self[sp + 24] = self["pc"] | 1
+        self[sp + 28] = self["APSR"]
+        self['control'] = 0
+
+        # TODO: handle other software-triggered exceptions (like bkpt)
+        self["pc"] = self.functions["SVC_Handler"] | 1
+        return True
 
     def start(self, begin, end, timeout=0, count=0):
         return self._start(begin | 1, end, timeout, count)
@@ -55,4 +82,19 @@ class rainbow_cortexm(rainbowBase):
         self["pc"] = self["lr"]
 
     def block_handler(self, uci, address, size, user_data):
+        if (address & 0xfffffff0) == 0xfffffff0:
+            is_psp = (address >> 2) & 1
+            is_unpriv = (address >> 3) & 1
+            self['control'] = (is_psp << 1) | is_unpriv
+
+            sp = self["sp"]
+            nvic_stack_bytes = self[sp:sp+32]
+            nvic_stack = unpack('8I', nvic_stack_bytes)
+
+            for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','pc','APSR']):
+                self[reg] = nvic_stack[i]
+
+            self["sp"] = sp + 32
+            return True
+
         self.base_block_handler(address)
