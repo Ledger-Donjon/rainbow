@@ -67,7 +67,7 @@ def get_traces(targetf, nb, nb_samples):
 
 if __name__ == "__main__":
     _, func = generate_targetf()
-    values, traces, addresses = get_traces(func, 10, 1000000)
+    values, traces, addresses = get_traces(func, 5, 1000000)
 
     from lascar import TraceBatchContainer, Session
 
@@ -77,4 +77,4 @@ if __name__ == "__main__":
 
     from rainbow.utils.plot import viewer
 
-    viewer(addresses, s.engines["var"].finalize())
+    viewer(addresses, s["var"].finalize())

@@ -53,9 +53,9 @@ if __name__ == "__main__":
     values = np.array([[rnd(8) for j in range(16)] for k in range(N)], dtype=np.uint8)
     traces = np.array([aes_encrypt(KEY, bytes(values[i])) for i in range(N)])
 
-    from rainbow.utils.plot.plot import plot
+    from rainbow.utils import plot
 
-    plot(traces[:10])
+    plot(traces[:5])
 
     from lascar.container import TraceBatchContainer
     from lascar import Session, CpaEngine, ConsoleOutputMethod
@@ -70,8 +70,9 @@ if __name__ == "__main__":
             for i in range(16)
         ]
     )
+
     s.run()
 
     print(s.output_method.finalize())
 
-    plot(s.engines["cpa1"].finalize(), highlight=KEY[1])
+    plot(s['cpa1'].finalize(), highlight=KEY[1])

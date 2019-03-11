@@ -4,7 +4,6 @@ from binascii import unhexlify
 from ripped import main_func
 from random import choice
 
-# from rainbow.utils.plot import viewer
 import numpy as np
 
 # Main loop : choose random inputs, store them in 'plains'
@@ -62,13 +61,14 @@ K = list(
 for i, n in enumerate([f"cpa{i}" for i in range(16)]):
     print(
         hex(K[i]),
-        (K[i] == np.abs(s.engines[n]._finalize()).max(1).argmax())
+        (K[i] == np.abs(s[n]._finalize()).max(1).argmax())
         and "found !"
         or "not found",
     )
 
 # Let's draw one result
-v = s.engines["cpa3"]._finalize()
-from rainbow.utils.plot.plot import plot
+v = s["cpa3"]._finalize()
+
+from rainbow.utils import plot
 
 plot(v, highlight=0xE0)

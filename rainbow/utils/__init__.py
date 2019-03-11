@@ -16,6 +16,8 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
+from rainbow.utils.plot.plot import plot
+
 def hw(x):
     r = 0
     while x:
