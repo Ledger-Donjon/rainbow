@@ -147,7 +147,7 @@ class rainbowBase:
                 self.emu.mem_write(v, value)
             else:
                 self.emu.reg_write(
-                    eval(self.uc_reg + inp.upper()),
+                    self.reg_map[inp],
                     int.from_bytes(value, self.endianness))  ##thank you unicorn
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
@@ -171,7 +171,7 @@ class rainbowBase:
             if v is not None:
                 return self.emu[v]
             else:
-                return self.emu.reg_read(eval(self.uc_reg + s.upper()))
+                return self.emu.reg_read(self.reg_map[s])
         elif isinstance(s, int):
             if s & 3:
                 size = 1
@@ -227,7 +227,7 @@ class rainbowBase:
     def sca_trace_mem(self, uci, access, address, size, value, user_data):
         """ Hook that stores memory accesses in side-channel mode. Stores read and written values """
         if self.mem_trace:
-            self.sca_address_trace.append(f"{self[self.pc]:8x}   @[{address:08X}]")
+            self.sca_address_trace.append(f"{uci.reg_read(self.pc):8x}   @[{address:08X}]")
             if access == uc.UC_MEM_WRITE:
                 self.sca_values_trace.append(value)
             else:
@@ -288,12 +288,12 @@ class rainbowBase:
                 for x in self.reg_leak[1]:
                     if x not in self.TRACE_DISCARD:
                         self.sca_address_trace.append(self.reg_leak[0])
-                        self.sca_values_trace.append(self[x])
+                        self.sca_values_trace.append(uci.reg_read(self.reg_map[x]))
 
             self.reg_leak = None
 
             ins = self.disassemble_single_detailed(address, size)
-            regs_read, regs_written = ins.regs_access()
+            _regs_read, regs_written = ins.regs_access()
             if len(regs_written) > 0:
                 self.reg_leak = (
                     f"{address:8X} {ins.mnemonic:<6}  {ins.op_str}",
@@ -332,7 +332,7 @@ class rainbowBase:
     def unmapped_hook(self, uci, access, address, size, value, user_data):
         """ Warns where the unicorn engine stopped on an unmapped access """
         print(
-            f"Unmapped fetch at 0x{address:x} (Emu stopped in {self[self.pc]:x})",
+            f"Unmapped fetch at 0x{address:x} (Emu stopped in {uci.reg_read(self.pc):x})",
             end="",
         )
         raise Exception("Unmapped")
@@ -352,7 +352,7 @@ class rainbowBase:
         if address in self.function_names.keys():
             f = self.function_names[address]
             if self.function_calls:
-                print(f"\n\n {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
+                print(f"\n\t {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
 
             if f in self.stubbed_functions:
                 r = self.stubbed_functions[f](self)

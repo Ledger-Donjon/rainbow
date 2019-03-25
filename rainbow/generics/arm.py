@@ -38,8 +38,10 @@ class rainbow_arm(rainbowBase):
         self.endianness = "little"
         self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
         self.page_shift = self.page_size.bit_length() - 1
-        self.uc_reg = "uc.arm_const.UC_ARM_REG_"
-        self.pc = "pc"
+        self.pc = uc.arm_const.UC_ARM_REG_PC
+
+        known_regs = [i[len('UC_ARM_REG_'):] for i in dir(uc.arm_const) if '_REG' in i]
+        self.reg_map = {r.lower(): getattr(uc.arm_const, 'UC_ARM_REG_'+r) for r in known_regs}
 
         self.stubbed_functions = local_vars
         self.setup(sca_mode)

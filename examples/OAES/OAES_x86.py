@@ -20,8 +20,8 @@ def generate_targetf():
         for r in e.INTERNAL_REGS:
             e[r] = 0
 
-        e["EBP"] = e.STACK_ADDR
-        e["ESP"] = e.STACK_ADDR
+        e["ebp"] = e.STACK_ADDR
+        e["esp"] = e.STACK_ADDR
 
         e[0xBADC0FE0] = unhexlify(inp)
         e[0xA5A5A5A5] = unhexlify(inp)
@@ -67,7 +67,7 @@ def get_traces(targetf, nb, nb_samples):
 
 if __name__ == "__main__":
     _, func = generate_targetf()
-    values, traces, addresses = get_traces(func, 5, 1000000)
+    values, traces, addresses = get_traces(func, 10, 1000000)
 
     from lascar import TraceBatchContainer, Session
 

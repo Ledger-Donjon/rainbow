@@ -38,11 +38,13 @@ class rainbow_x64(rainbowBase):
         self.endianness = "little"
         self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
         self.page_shift = self.page_size.bit_length() - 1
-        self.uc_reg = "uc.x86_const.UC_X86_REG_"
-        self.pc = "rip"
+        self.pc = uc.x86_const.UC_X86_REG_RIP
 
         # workaround for capstone 4
         uc.x86_const.UC_X86_REG_RFLAGS = uc.x86_const.UC_X86_REG_EFLAGS
+
+        known_regs = [i[len('UC_X86_REG_'):] for i in dir(uc.x86_const) if '_REG' in i]
+        self.reg_map = {r.lower(): getattr(uc.x86_const, 'UC_X86_REG_'+r) for r in known_regs}
 
         self.stubbed_functions = local_vars
         self.setup(sca_mode)
