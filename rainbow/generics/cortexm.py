@@ -70,7 +70,7 @@ class rainbow_cortexm(rainbowBase):
         self[sp + 16] = self["r12"]
         self[sp + 20] = self["r14"]
         self[sp + 24] = self["pc"] | 1
-        self[sp + 28] = self["APSR"]
+        self[sp + 28] = self["apsr"]
         self['control'] = 0
 
         # TODO: handle other software-triggered exceptions (like bkpt)
@@ -93,7 +93,7 @@ class rainbow_cortexm(rainbowBase):
             nvic_stack_bytes = self[sp:sp+32]
             nvic_stack = unpack('8I', nvic_stack_bytes)
 
-            for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','pc','APSR']):
+            for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','pc','apsr']):
                 self[reg] = nvic_stack[i]
 
             self["sp"] = sp + 32
