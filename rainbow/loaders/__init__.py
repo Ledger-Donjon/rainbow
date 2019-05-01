@@ -19,8 +19,9 @@
 import os
 from .elfloader import elfloader
 from .hexloader import hexloader
+from .peloader import peloader
 
-LOADERS = {".hex": hexloader, ".elf": elfloader, ".so": elfloader}
+LOADERS = {".hex": hexloader, ".elf": elfloader, ".so": elfloader, ".exe": peloader}
 
 
 def load_selector(filename, rainbow_instance, typ=None, entrypoint=None, verbose=False):
