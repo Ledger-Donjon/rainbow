@@ -25,11 +25,11 @@ from rainbow.color_functions import color
 class rainbow_x64(rainbowBase):
 
     STACK_ADDR = 0xB0000000
-    STACK = (STACK_ADDR - 0x1000, STACK_ADDR + 32)
+    STACK = (STACK_ADDR - 0x100000, STACK_ADDR + 32)
     INTERNAL_REGS = ["rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rip"]
     TRACE_DISCARD = ["rflags"]
 
-    def __init__(self, trace=True, sca_mode=False, local_vars=[]):
+    def __init__(self, trace=True, sca_mode=False, local_vars={}):
         super().__init__(trace, sca_mode)
         self.emu = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_64)
         self.disasm = cs.Cs(cs.CS_ARCH_X86, cs.CS_MODE_64)

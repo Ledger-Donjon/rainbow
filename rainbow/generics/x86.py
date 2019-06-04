@@ -29,7 +29,7 @@ class rainbow_x86(rainbowBase):
     INTERNAL_REGS = ["eax", "ebx", "ecx", "edx", "esi", "edi", "eip", "ebp"]
     TRACE_DISCARD = ["eflags"]
 
-    def __init__(self, trace=True, sca_mode=False, local_vars=[]):
+    def __init__(self, trace=True, sca_mode=False, local_vars={}):
         super().__init__(trace, sca_mode)
         self.emu = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_32)
         self.disasm = cs.Cs(cs.CS_ARCH_X86, cs.CS_MODE_32)
