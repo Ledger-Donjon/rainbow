@@ -183,7 +183,7 @@ class rainbowBase:
 
     def load(self, filename, typ=None, verbose=False):
         """ Load a file into the emulator's memory """
-        load_selector(filename, self, typ, verbose=verbose)
+        return load_selector(filename, self, typ, verbose=verbose)
 
     def _start(self, begin, end, timeout, count):
         """ Begin emulation """
