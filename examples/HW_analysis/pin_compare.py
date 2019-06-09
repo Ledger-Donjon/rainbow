@@ -40,10 +40,16 @@ def show_nicv(values, traces, nr_digits=4):
     )
 
     s = Session(t)
-    s.add_engines([NicvEngine('a'+str(i), lambda v,z=i:v[z], range(9)) for i in range(nr_digits)])
+
+    ## Input value leakage
+    # s.add_engines([NicvEngine('a'+str(i), lambda v,z=i:v[z], range(9)) for i in range(nr_digits)])
+
+    ## Difference leakage
+    s.add_engines([NicvEngine('a'+str(i), lambda v,z=i:np.int8(v[z]) - np.int8(STORED_PIN[z]), range(-9,8)) for i in range(nr_digits)])
 
     ## below is a variant on the carry bit
     # s.add_engines([NicvEngine('c'+str(i), lambda v,z=i:v[z]>int(STORED_PIN[z]), range(16)) for i in range(nr_digits)])
+
     s.run()
 
     return np.array([s[eng]._finalize() for eng in s.engines if eng not in ['mean', 'var']])
@@ -52,7 +58,7 @@ if __name__ == "__main__":
     import random
 
     STORED_PIN = "1874"
-    N = 200
+    N = 500
 
     print("Setting up emulator")
     e = rainbow_stm32(sca_mode=True, local_vars=globals())
