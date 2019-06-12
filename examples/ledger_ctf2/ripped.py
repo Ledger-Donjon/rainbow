@@ -36,17 +36,7 @@ e.trace_regs = 1
 
 
 def main_func(inputt):
-
-    # Resets the leakage trace
-    e.trace_reset()
-
-    # Resets registers
-    for r in e.INTERNAL_REGS:
-        e[r] = 0
-
-    # Reset the stack
-    e["rsp"] = e.STACK_ADDR
-    e["rbp"] = e.STACK_ADDR
+    e.reset()
 
     # Setup call parameters.
     # Let's declare 'argv' is at 0x200000
@@ -102,7 +92,7 @@ def main_func(inputt):
     # first round
     # randval = 7
     def rand(em):
-        em["rax"] = 7
+        em["rax"] = 7 
         return True
 
     # This needs to be done again to point to the new function

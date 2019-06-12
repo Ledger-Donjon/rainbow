@@ -14,14 +14,8 @@ def generate_targetf():
     e.trace_regs = 1
 
     def targetf(inp, length):
-        e.trace_reset()
+        e.reset()
         e[e.STACK[0] : e.STACK[1]] = 0
-
-        for r in e.INTERNAL_REGS:
-            e[r] = 0
-
-        e["ebp"] = e.STACK_ADDR
-        e["esp"] = e.STACK_ADDR
 
         e[0xBADC0FE0] = unhexlify(inp)
         e[0xA5A5A5A5] = unhexlify(inp)

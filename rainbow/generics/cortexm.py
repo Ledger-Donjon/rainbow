@@ -47,15 +47,16 @@ class rainbow_cortexm(rainbowBase):
         self.stubbed_functions = local_vars
         self.setup(sca_mode)
 
-        self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
-        self.emu.reg_write(uc.arm_const.UC_ARM_REG_APSR, 0)
-
+        self.reset_stack()
         # Force mapping of those addresses so that
         # exception returns can be caught in the base
         # block hook rather than a code fetch hook
-        self[0xfffffff0] = 0
+        self.map_space(0xfffffff0, 0xffffffff)
 
         self.emu.hook_add(uc.UC_HOOK_INTR, self.intr_hook)
+
+    def reset_stack(self):
+        self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
 
     def intr_hook(self, uci, intno, data):
         # Hack : pretend this is all exceptions at once

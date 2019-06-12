@@ -7,11 +7,7 @@ e.load('crackme.exe')
 
 def encrypt(plain):
     # Reset the emulator state
-    e.trace_reset()
-    for r in e.INTERNAL_REGS:
-        e[r] = 0
-    e['esp'] = e.STACK_ADDR
-    e['ebp'] = e.STACK_ADDR
+    e.reset()
 
     # Load the plaintext into memory
     # the state is loaded column-wise

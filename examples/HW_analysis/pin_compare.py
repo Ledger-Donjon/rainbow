@@ -2,10 +2,7 @@ from rainbow.devices.stm32 import rainbow_stm32f215 as rainbow_stm32
 
 def comparePin(e, pin_attempt, stored_pin, leakage='register'):
     """ Handle calling the pin comparison function using the emulator """
-    e.trace_reset()
-    for r in e.INTERNAL_REGS:
-        e[r] = 0
-    e['sp'] = e.STACK_ADDR
+    e.reset()
 
     stor_pin = 0x08008110 + 0x189       # address of the storagePin->rom
     e[stor_pin] = bytes(stored_pin + "\x00", "ascii")

@@ -46,6 +46,9 @@ class rainbow_x86(rainbowBase):
         self.stubbed_functions = local_vars
         self.setup(sca_mode)
 
+        self.reset_stack()
+
+    def reset_stack(self):
         self.emu.reg_write(uc.x86_const.UC_X86_REG_EBP, self.STACK_ADDR)
         self.emu.reg_write(uc.x86_const.UC_X86_REG_ESP, self.STACK_ADDR)
 

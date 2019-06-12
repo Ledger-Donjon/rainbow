@@ -31,7 +31,7 @@ class rainbow_arm(rainbowBase):
 
     def __init__(self, trace=True, sca_mode=False, local_vars=[]):
         super().__init__(trace, sca_mode)
-        self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM | uc.UC_MODE_THUMB)
+        self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM | cs.CS_MODE_THUMB)
         self.disasm.detail = True
         self.word_size = 4
@@ -45,10 +45,11 @@ class rainbow_arm(rainbowBase):
 
         self.stubbed_functions = local_vars
         self.setup(sca_mode)
+    
+        self.reset_stack()
 
+    def reset_stack(self):
         self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
-        self.emu.reg_write(uc.arm_const.UC_ARM_REG_FP, self.STACK_ADDR)
-        self.emu.reg_write(uc.arm_const.UC_ARM_REG_APSR, 0)  ## ?
 
     def start(self, begin, end, timeout=0, count=0):
         return self._start(begin, end, timeout, count)

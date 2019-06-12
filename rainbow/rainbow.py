@@ -132,8 +132,12 @@ class rainbowBase:
 
         ## convert value
         if isinstance(val, int):
-            length = max(self.word_size, math.ceil(val.bit_length() / 8))
-            value = val.to_bytes(length, self.endianness)
+            if val==0:
+                length = 1
+                value = bytes(1)
+            else:
+                length = math.ceil(val.bit_length() / 8)
+                value = val.to_bytes(length, self.endianness)
         elif isinstance(val, bytes):
             length = len(val)
             value = val
@@ -143,24 +147,18 @@ class rainbowBase:
         if isinstance(inp, str):  # regname
             v = self.OTHER_REGS_NAMES.get(inp, None)
             if v is not None:
-                self.map_space(v, v + length)
-                self.emu.mem_write(v, value)
+                self.emu.mem_write(v, val.to_bytes(self.word_size, self.endianness))
             else:
-                self.emu.reg_write(
-                    self.reg_map[inp],
-                    int.from_bytes(value, self.endianness))  ##thank you unicorn
+                self.emu.reg_write(self.reg_map[inp], val)
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
             self.emu.mem_write(inp, value)
-        elif isinstance(inp, tuple):
-            self.map_space(inp, inp + length)
-            for i in inp:
-                self.emu.mem_write(i, value)
         elif isinstance(inp, slice):
             if inp.step is not None:
                 return NotImplementedError
             self.map_space(inp.start, inp.stop)
-            self.emu.mem_write(inp.start, val.to_bytes(length, self.endianness))
+            v = val.to_bytes(length, self.endianness)
+            self.emu.mem_write(inp.start, v*(inp.stop-inp.start))
         else:
             raise Exception("Invalid range type for write : ", type(inp), inp)
 
@@ -223,6 +221,14 @@ class rainbowBase:
         """ Dumps all regs when a breakpoint is hit """
         for reg in self.INTERNAL_REGS:
             print(f"{reg} : {self[reg]:x}")
+
+    def reset(self):
+        """ Reset side-channel trace, zeroize registers and reset stack """
+        if self.sca_mode:
+            self.trace_reset()
+        for r in self.INTERNAL_REGS:
+            self[r] = 0
+        self.reset_stack()
 
     def sca_trace_mem(self, uci, access, address, size, value, user_data):
         """ Hook that stores memory accesses in side-channel mode. Stores read and written values """

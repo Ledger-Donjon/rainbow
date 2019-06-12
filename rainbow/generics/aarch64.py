@@ -46,6 +46,9 @@ class rainbow_aarch64(rainbowBase):
         self.stubbed_functions = local_vars
         self.setup(sca_mode)
         
+        self.reset_stack()
+
+    def reset_stack(self):
         self.emu.reg_write(uc.arm64_const.UC_ARM64_REG_SP, self.STACK_ADDR)
 
     def start(self, begin, end, timeout=0, count=0):
