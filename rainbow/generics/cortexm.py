@@ -64,7 +64,7 @@ class rainbow_cortexm(rainbowBase):
 
         sp = self["sp"] - 32
         self["sp"] = sp
-        for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','apsr']):
+        for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','pc', 'apsr']):
             self.emu.mem_write(sp + 4*i, self[reg].to_bytes(4, 'little'))
 
         self[sp + 24] = (self["pc"] | 1).to_bytes(4, 'little')
