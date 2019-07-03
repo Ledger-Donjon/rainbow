@@ -64,19 +64,15 @@ class rainbow_cortexm(rainbowBase):
 
         sp = self["sp"] - 32
         self["sp"] = sp
-        self[sp +  0] = self["r0"]
-        self[sp +  4] = self["r1"]
-        self[sp +  8] = self["r2"]
-        self[sp + 12] = self["r3"]
-        self[sp + 16] = self["r12"]
-        self[sp + 20] = self["r14"]
-        self[sp + 24] = self["pc"] | 1
-        self[sp + 28] = self["apsr"]
+        for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','apsr']):
+            self.emu.mem_write(sp + 4*i, self[reg].to_bytes(4, 'little'))
+
+        self[sp + 24] = (self["pc"] | 1).to_bytes(4, 'little')
         self['control'] = 0
 
         # TODO: handle other software-triggered exceptions (like bkpt)
         self["pc"] = self.functions["SVC_Handler"] | 1
-        return True
+        return False 
 
     def start(self, begin, end, timeout=0, count=0):
         return self._start(begin | 1, end, timeout, count)
@@ -97,6 +93,7 @@ class rainbow_cortexm(rainbowBase):
             for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','pc','apsr']):
                 self[reg] = nvic_stack[i]
 
+            self['ipsr'] = 0
             self["sp"] = sp + 32
             return True
 
