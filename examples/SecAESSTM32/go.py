@@ -3,6 +3,7 @@
 
 from rainbow.generics import rainbow_arm
 from binascii import hexlify
+from Crypto.Cipher import AES
 
 def f_aes(e, key, input_):
     e.reset()
@@ -39,7 +40,15 @@ def f_aes(e, key, input_):
 
     if e['r0']:
         print('ERROR !')
-    return e[output_p:output_p+16]
+
+    res = e[output_p:output_p+16]
+    aes_c = AES.new(key, AES.MODE_ECB)
+    ref = aes_c.encrypt(input_)
+    if ref != res:
+        print("Nope :")
+        print(hexlify(res))
+        print(hexlify(ref))
+    return res
 
 if __name__ == "__main__":
     e = rainbow_arm(sca_mode=1)
@@ -49,25 +58,12 @@ if __name__ == "__main__":
     # map it to prevent an unmapped fetch exception
     e[return_addr] = 0
 
-    selftest = 1
-    if selftest:
-        key = b"\x73"*16
-        input_ = b"\x1b"*16
-        res = f_aes(e, key, input_)
-        
-        from Crypto.Cipher import AES
-        aes_c = AES.new(key, AES.MODE_ECB)
-        ref = aes_c.encrypt(input_)
-        if ref != res:
-            print("Nope :")
-            print(hexlify(res))
-            print(hexlify(ref))
-
     if e.sca_mode:
         from random import getrandbits 
         from rainbow.utils import hw, plot
         import numpy as np
 
+        key = b"\x7a"*16
         traces = []
         for i in range(5):
             print(".", end='')
