@@ -66,10 +66,13 @@ class Interface(qt.QMainWindow):
             (r + 0.2, self.etraces.max() + 1),
         ]
         self.zone = scene.visuals.Polygon(
-            coords, color=color.Color("grey", alpha=0.7), parent=self.plot_.view.scene
+            coords, color=color.Color("#ccc", alpha=0.7), parent=self.plot_.view.scene
         )
+        y_range = self.etraces.max()-self.etraces.min()
+        y_fct = 3
+        y_padding = y_range/y_fct
         self.plot_.view.camera.set_range(
-            x=(r - 20, r + 20), y=(self.etraces.min(), self.etraces.max()), z=(0, 0)
+            x=(r - 5, r + 5), y=(self.etraces.min()-y_padding, self.etraces.max()+y_padding), z=(0, 0)
         )
 
     def place_widgets(self):

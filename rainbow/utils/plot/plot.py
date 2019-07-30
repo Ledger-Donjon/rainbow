@@ -19,11 +19,12 @@
 import numpy as np
 from vispy import scene
 from vispy import color
+from vispy import visuals
 
 # Starting from https://gist.github.com/yhql/70c3e59019cb73ec83870e946166b95f
 
-# bg_clr = "#222"  # dark background color
-bg_clr = "#000"  # dark background color
+bg_clr = "#000"
+txt_clr = "#ddd"
 highlighted = color.Color("#41CCB4")
 others = highlighted.darker(0.5)
 
@@ -34,7 +35,7 @@ class plot:
     """
 
     def __init__(
-        self, icurves, highlight=None, clrmap="husl", colors=None, parent=None
+        self, icurves, highlight=None, clrmap="husl", colors=None, parent=None, itermode=False
     ):
         """ 
         :param icurves: input curve or list of curves
@@ -59,41 +60,47 @@ class plot:
 
         nb_traces, size = curves.shape
 
-        # the Line visual requires a vector of X,Y coordinates
-        xy_curves = np.dstack((np.tile(np.arange(size), (nb_traces, 1)), curves))
+        if not itermode:
+            # the Line visual requires a vector of X,Y coordinates
+            xy_curves = np.dstack((np.tile(np.arange(size), (nb_traces, 1)), curves))
 
-        # Specify which points are connected
-        # Start by connecting each point to its successor
-        connect = np.empty((nb_traces * size - 1, 2), np.int32)
-        connect[:, 0] = np.arange(nb_traces * size - 1)
-        connect[:, 1] = connect[:, 0] + 1
+            # Specify which points are connected
+            # Start by connecting each point to its successor
+            connect = np.empty((nb_traces * size - 1, 2), np.int32)
+            connect[:, 0] = np.arange(nb_traces * size - 1)
+            connect[:, 1] = connect[:, 0] + 1
 
-        # Prevent vispy from drawing a line between the last point
-        # of a curve and the first point of the next curve
-        for i in range(size, nb_traces * size, size):
-            connect[i - 1, 1] = i - 1
+            # Prevent vispy from drawing a line between the last point
+            # of a curve and the first point of the next curve
+            for i in range(size, nb_traces * size, size):
+                connect[i - 1, 1] = i - 1
 
-        if highlight is not None:
-            # cheat by predrawing a single line over the highlighted one
-            scene.Line(
-                pos=xy_curves[highlight], color=highlighted, parent=self.view.scene
-            )
-            scene.Line(
-                pos=xy_curves, color=others, parent=self.view.scene, connect=connect
-            )
-        else:
-            if colors is None:
-                colormap = color.get_colormap(clrmap)[
-                    np.linspace(0.0, 1.0, nb_traces * size)
-                ]
+            if highlight is not None:
+                # cheat by predrawing a single line over the highlighted one
+                scene.Line(
+                    pos=xy_curves[highlight], color=highlighted, parent=self.view.scene
+                )
+                scene.Line(
+                    pos=xy_curves, color=others, parent=self.view.scene, connect=connect
+                )
             else:
-                colormap = color.get_colormap(clrmap)[colors]
-            scene.Line(
-                pos=xy_curves, color=colormap, parent=self.view.scene, connect=connect
-            )
+                if colors is None:
+                    colormap = color.get_colormap(clrmap)[
+                        np.linspace(0.0, 1.0, nb_traces * size)
+                    ]
+                else:
+                    colormap = color.get_colormap(clrmap)[colors]
+                scene.Line(
+                    pos=xy_curves, color=colormap, parent=self.view.scene, connect=connect,
+                )
 
-        self.x_axis = scene.AxisWidget(orientation="bottom")
-        self.y_axis = scene.AxisWidget(orientation="left")
+        else:
+            colormap = color.get_colormap(clrmap)[np.linspace(0., 1., nb_traces)]
+            for i in range(nb_traces):
+                scene.Line(pos=np.dstack((np.arange(size),curves[i]))[0], color=colormap[i], method="agg",  width=2., parent=self.view.scene)
+
+        self.x_axis = scene.AxisWidget(orientation="bottom", text_color=txt_clr)
+        self.y_axis = scene.AxisWidget(orientation="left", text_color=txt_clr)
         self.x_axis.stretch = (1, 0.05)
         self.y_axis.stretch = (0.05, 1)
         self.grid.add_widget(self.x_axis, row=1, col=1)
@@ -109,6 +116,7 @@ class plot:
 
 
 if __name__ == "__main__":
-    a = np.random.normal(0.0, 500, (20, 20000))
+    a = np.random.normal(0.0, 500, (10, 2000))
     v = plot(a)
+    v = plot(a,itermode=True)
     v = plot(a, highlight=3)

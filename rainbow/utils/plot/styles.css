@@ -1,21 +1,32 @@
 QWidget {
+    /* Dark */
     background-color: #222;
     color: #aaa;
-    font-family: "Hack";
+    /* Clear */
+    /* background-color: #999; */
+    /* color: #000; */
+    font-family: "Hack", "Consolas";
     font: 16px;
     padding: 0;
     border: none;
 }
 QListWidget {
+    background-color: #fff;
     font: 14px;
 }
 QListWidget:selected {
     background-color: #0078cb;
+    /* background-color: #777; */
+}
+QListWidgetItem:selected {
+    background-color: #0078cb;
+    /* background-color: #777; */
 }
 QListWidget:current {
     background-color: #0078cb;
+    /* background-color: #777; */
 }
-
 QFrame {
     border: 1px solid #00688B;
+    /* border: 1px solid #000; */
 }
