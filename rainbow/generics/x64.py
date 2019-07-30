@@ -64,4 +64,4 @@ class rainbow_x64(rainbowBase):
         self["rip"] = int.from_bytes(ret, "little")
 
     def block_handler(self, uci, address, size, user_data):
-        self.base_block_handler(address)
+        return self.base_block_handler(address)
