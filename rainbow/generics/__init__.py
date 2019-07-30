@@ -21,3 +21,4 @@ from .arm import rainbow_arm
 from .aarch64 import rainbow_aarch64
 from .x86 import rainbow_x86
 from .x64 import rainbow_x64
+from .m68k import rainbow_m68k
