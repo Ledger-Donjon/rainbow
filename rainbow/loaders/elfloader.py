@@ -61,6 +61,12 @@ def elfloader(elf_file, emu, verbose=False):
                 print(f"Relocating {r.symbol.name} at {r.address:x} to {rsv:x}")
             emu[r.address] = rsv
 
+    # lief > 0.10
+    try:
+        emu.functions.update( {f.name:f.address for f in elffile.exported_functions} )
+    except:
+        pass
+
     ## TODO: when the ELF has relocated functions exported, LIEF fails on get_function_address
     for i in elffile.exported_functions:
         try:
