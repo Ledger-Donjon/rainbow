@@ -29,7 +29,7 @@ class rainbow_arm(rainbowBase):
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
     TRACE_DISCARD = []
 
-    def __init__(self, trace=True, sca_mode=False, local_vars=[]):
+    def __init__(self, trace=True, sca_mode=False, local_vars={}):
         super().__init__(trace, sca_mode)
         self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM | cs.CS_MODE_THUMB)
