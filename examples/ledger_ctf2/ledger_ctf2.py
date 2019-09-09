@@ -1,7 +1,7 @@
 # This example retrieves the key from the AES in https://github.com/LedgerHQ/CTF/tree/master/ctf2018/CTF2
 
 from binascii import unhexlify
-from ripped import main_func
+from ripped2 import main_func
 from random import choice
 
 import numpy as np
@@ -10,7 +10,7 @@ import numpy as np
 # call function with said input and retrieve execution trace
 traces = []
 plains = []
-for i in range(90):
+for i in range(80):
     print("-" * 8, i)
 
     plain = "".join(choice("0123456789abcdef") for _ in range(32))
@@ -49,7 +49,7 @@ s.add_engines(
 )
 s.run()
 
-print(s.output_method.finalize())
+# print(s.output_method.finalize())
 
 # Check the results :
 print("Key should be : f0 33 1c e0 26 6a da ce 86 a8 a1 3b fa 14 67 40")
