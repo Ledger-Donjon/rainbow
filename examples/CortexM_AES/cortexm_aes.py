@@ -1,8 +1,12 @@
 # aes128 from https://github.com/Ko-/aes-armcortexm
 
 import numpy as np
+from binascii import unhexlify, hexlify
 from rainbow.generics import rainbow_arm
-from rainbow.utils import hw
+from rainbow.utils import hw, plot
+
+import lascar
+from lascar.tools.aes import sbox
 
 
 def aes_encrypt(key, plaintext):
@@ -43,36 +47,24 @@ def aes_encrypt(key, plaintext):
     )
     return trace
 
+class CortexMAesContainer(lascar.AbstractContainer):
 
-if __name__ == "__main__":
-    from random import getrandbits as rnd
+    def generate_trace(self,idx):
+        plaintext = np.random.randint(0,256,(16,),np.uint8)
+        leakage = np.array(aes_encrypt(KEY, plaintext.tobytes())) 
+        return lascar.Trace(leakage, plaintext)
 
-    KEY = bytes(range(16))
 
-    N = 100
-    values = np.array([[rnd(8) for j in range(16)] for k in range(N)], dtype=np.uint8)
-    traces = np.array([aes_encrypt(KEY, bytes(values[i])) for i in range(N)])
+N = 100
+KEY = bytes(range(16))
 
-    from rainbow.utils import plot
+container = CortexMAesContainer(N)
+plot(container[:5].leakages)
 
-    plot(traces[:5])
+cpa_engines = [lascar.CpaEngine(f'cpa{i}',lambda plaintext, key_byte, index=i: sbox[plaintext[index]^key_byte], range(256)) for i in range(16)]
+s = lascar.Session(CortexMAesContainer(N), engines=cpa_engines, name="lascar CPA").run()
 
-    from lascar.container import TraceBatchContainer
-    from lascar import Session, CpaEngine, ConsoleOutputMethod
-    from lascar.tools.aes import sbox
+key = bytes([  engine.finalize().max(1).argmax() for engine in cpa_engines])
+print("Key is :", hexlify(key).upper())
 
-    t = TraceBatchContainer(traces, values)
-
-    s = Session(t, output_method=ConsoleOutputMethod())
-    s.add_engines(
-        [
-            CpaEngine(f"cpa{i}", lambda v, k, z=i: sbox[v[z] ^ k], range(256))
-            for i in range(16)
-        ]
-    )
-
-    s.run()
-
-    print(s.output_method.finalize())
-
-    plot(s['cpa1'].finalize(), highlight=KEY[1])
+plot(cpa_engines[1].finalize(), highlight=KEY[1])
