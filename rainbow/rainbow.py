@@ -318,18 +318,18 @@ class rainbowBase:
             self.bkpt_dump()
 
             while True:
-                s = input("Press Enter to continue, or Input an address and a size to display an address")
-                if len(s.split(" "))==2:
-                    try:
-                        address = eval("0x"+s.split(" ")[0])
-                        size = eval(s.split(" ")[1])
-                        print(self[address:address+size])
-                    except Exception as e:
-                        print("Error:", e)
-                        print("Usage: type \"DEAD0000 32\" for instance")
-                        continue
+                s = input("Press Enter to continue, or Input an address and a size to display an address: ")
+
                 if s is '':
                     break
+                try:
+                    address = eval("0x"+s.split(" ")[0])
+                    size = eval(s.split(" ")[1])
+                    print("Addr=%s, size=%d"%(hex(address), size), bytes(self[address:address+size]))
+                except Exception as e:
+                    print("Error:", e)
+                    print("Usage: type \"DEAD0000 32\" for instance")
+                    continue
         
 
         if self.trace:
