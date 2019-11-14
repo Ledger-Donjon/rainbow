@@ -36,7 +36,7 @@ class rainbowBase:
 
     """ Emulation base class """
 
-    def __init__(self, trace=True, sca_mode=False):
+    def __init__(self, trace=True, sca_mode=False,sca_HD=False):
         self.breakpoints = []
         self.skips = []
         self.emu = None
@@ -66,6 +66,9 @@ class rainbowBase:
         colorama.init()
 
         self.trace_reset()
+
+        # Take into account another leakage model
+        self.sca_HD = sca_HD
 
     def trace_reset(self):
         self.reg_leak = None
@@ -187,6 +190,9 @@ class rainbowBase:
         """ Begin emulation """
         ret = 0
         try:
+            # Copy the original registers into the backup before starting the process
+            # This is for the Hamming Distance leakage model
+            self.RegistersBackup = [0]*len(self.reg_map)
             ret = self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
             print(ret, e)
@@ -203,7 +209,10 @@ class rainbowBase:
         self.emu.hook_add(uc.UC_HOOK_MEM_UNMAPPED, self.unmapped_hook)
         self.emu.hook_add(uc.UC_HOOK_BLOCK, self.block_handler)
         if sca_mode:
-            self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_trace)
+            if (self.sca_HD):
+                self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_traceHD)
+            else:
+                self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_traceHW)
             self.emu.hook_add(
                 uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.sca_trace_mem
             )
@@ -282,7 +291,7 @@ class rainbowBase:
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
-    def sca_code_trace(self, uci, address, size, data):
+    def sca_code_traceHW(self, uci, address, size, data):
         """ 
         Hook that traces modified register values in side-channel mode. 
         
@@ -306,6 +315,29 @@ class rainbowBase:
                     list(map(ins.reg_name, regs_written))
                 )
           
+    def sca_code_traceHD(self, uci, address, size, data):
+        """
+        Hook that traces modified register values in side-channel mode.
+
+        Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction.
+        Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction.
+        """
+        if self.trace:
+            if self.reg_leak is not None:
+                for x in self.reg_leak[1]:
+                    if x not in self.TRACE_DISCARD:
+                        self.sca_address_trace.append(self.reg_leak[0])
+                        self.sca_values_trace.append(self.RegistersBackup[self.reg_map[x]] ^ uci.reg_read(self.reg_map[x]))
+                        self.RegistersBackup[self.reg_map[x]] = uci.reg_read(self.reg_map[x])
+
+            self.reg_leak = None
+
+            ins = self.disassemble_single_detailed(address, size)
+            _regs_read, regs_written = ins.regs_access()
+            if len(regs_written) > 0:
+                self.reg_leak = (f"{address:8X} {ins.mnemonic:<6}  {ins.op_str}",list(map(ins.reg_name, regs_written))
+                )
+
     def code_trace(self, uci, address, size, data):
         """ 
         Hook that traces modified register values in side-channel mode. 
