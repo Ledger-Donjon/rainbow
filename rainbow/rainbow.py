@@ -212,7 +212,7 @@ class rainbowBase:
             if (self.sca_HD):
                 self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_traceHD)
             else:
-                self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_traceHW)
+                self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_trace)
             self.emu.hook_add(
                 uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.sca_trace_mem
             )
@@ -291,7 +291,7 @@ class rainbowBase:
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
-    def sca_code_traceHW(self, uci, address, size, data):
+    def sca_code_trace(self, uci, address, size, data):
         """ 
         Hook that traces modified register values in side-channel mode. 
         
