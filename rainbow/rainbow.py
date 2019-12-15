@@ -267,11 +267,6 @@ class rainbowBase:
                 val = color("CYAN", f"{val:8x}")
                 print(f"  {val} <- [{addr}]", end=" ")
 
-    def skip(self, address):
-        """ Add an instruction to skip (unused) """
-        if address not in self.skips:
-            self.skips += [address]
-
     def disassemble_single(self, addr, size):
         """ Disassemble a single instruction at address """
         instruction = self.emu.mem_read(addr, 2 * size)
