@@ -24,7 +24,7 @@ from rainbow.color_functions import color
 
 class rainbow_arm(rainbowBase):
 
-    STACK_ADDR = 0x20000000
+    STACK_ADDR = 0xb0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
     TRACE_DISCARD = []
