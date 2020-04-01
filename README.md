@@ -1,3 +1,5 @@
+[![Join the chat at https://gitter.im/Ledger-Donjon/rainbow](https://badges.gitter.im/Ledger-Donjon/rainbow.svg)](https://gitter.im/Ledger-Donjon/rainbow?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 # Rainbow 
 
 It makes unicorn traces.

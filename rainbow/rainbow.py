@@ -36,7 +36,7 @@ class rainbowBase:
 
     """ Emulation base class """
 
-    def __init__(self, trace=True, sca_mode=False):
+    def __init__(self, trace=True, sca_mode=False,sca_HD=False):
         self.breakpoints = []
         self.skips = []
         self.emu = None
@@ -209,6 +209,7 @@ class rainbowBase:
         if sca_mode:
             self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_trace)
             self.tm_hook = self.emu.hook_add(
+                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_traceHD)
                 uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.sca_trace_mem
             )
         else:
