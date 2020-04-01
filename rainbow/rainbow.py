@@ -46,6 +46,7 @@ class rainbowBase:
         self.page_size = 0
         self.functions = {}
         self.function_names = {}
+        self.profile_counter = 0
 
         self.OTHER_REGS = {}
         self.OTHER_REGS_NAMES = {}
@@ -113,7 +114,9 @@ class rainbowBase:
         if verbose:
             print(f"Mapping : {base:x} {size:x}")
 
-        self.emu.mem_map(base, size)
+        ret = self.emu.mem_map(base, size)
+        if ret is not None:
+            print(ret)
         self.mapped_regions.append((base, base + size))
 
     def __setitem__(self, inp, val):
@@ -144,21 +147,22 @@ class rainbowBase:
         else:
             raise Exception("Unhandled value type", type(val))
 
+        ret = None 
         if isinstance(inp, str):  # regname
             v = self.OTHER_REGS_NAMES.get(inp, None)
             if v is not None:
-                self.emu.mem_write(v, val.to_bytes(self.word_size, self.endianness))
+                ret = self.emu.mem_write(v, val.to_bytes(self.word_size, self.endianness))
             else:
-                self.emu.reg_write(self.reg_map[inp], val)
+                ret = self.emu.reg_write(self.reg_map[inp], val)
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
-            self.emu.mem_write(inp, value)
+            ret = self.emu.mem_write(inp, value)
         elif isinstance(inp, slice):
             if inp.step is not None:
                 return NotImplementedError
             self.map_space(inp.start, inp.stop)
             v = val.to_bytes(length, self.endianness)
-            self.emu.mem_write(inp.start, v*(inp.stop-inp.start))
+            ret = self.emu.mem_write(inp.start, v*(inp.stop-inp.start))
         else:
             raise Exception("Invalid range type for write : ", type(inp), inp)
 
@@ -183,13 +187,13 @@ class rainbowBase:
         """ Load a file into the emulator's memory """
         return load_selector(filename, self, typ, verbose=verbose)
 
-    def _start(self, begin, end, timeout, count):
+    def _start(self, begin, end, timeout=None, count=None):
         """ Begin emulation """
         ret = 0
         try:
             ret = self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
-            print(ret, e)
+            print("*****", e)
             self.emu.emu_stop()
             return True
         return False
@@ -200,18 +204,22 @@ class rainbowBase:
         self.map_space(*self.STACK)
 
         ## Add hooks
-        self.emu.hook_add(uc.UC_HOOK_MEM_UNMAPPED, self.unmapped_hook)
-        self.emu.hook_add(uc.UC_HOOK_BLOCK, self.block_handler)
+        self.mem_unmapped_hook = self.emu.hook_add(uc.UC_HOOK_MEM_UNMAPPED, self.unmapped_hook)
+        self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK, self.block_handler)
         if sca_mode:
-            self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_trace)
-            self.emu.hook_add(
+            self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_trace)
+            self.tm_hook = self.emu.hook_add(
                 uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.sca_trace_mem
             )
         else:
-            self.emu.hook_add(uc.UC_HOOK_CODE, self.code_trace)
-            self.emu.hook_add(
-                uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.trace_mem
-            )
+            self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE, self.code_trace)
+            self.mem_access_hook = self.emu.hook_add( uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.trace_mem)
+
+    def remove_hooks(self):
+        self.emu.hook_del(self.mem_access_hook)
+        self.emu.hook_del(self.code_hook)
+        self.emu.hook_del(self.mem_unmapped_hook)
+        self.emu.hook_del(self.block_hook)
 
     def add_bkpt(self, address):
         if address not in self.breakpoints:
@@ -233,15 +241,10 @@ class rainbowBase:
     def sca_trace_mem(self, uci, access, address, size, value, user_data):
         """ Hook that stores memory accesses in side-channel mode. Stores read and written values """
         if self.mem_trace:
-            self.sca_address_trace.append(f"{uci.reg_read(self.pc):8x}   @[{address:08X}]")
             if access == uc.UC_MEM_WRITE:
                 self.sca_values_trace.append(value)
             else:
-                self.sca_values_trace.append(
-                    int.from_bytes(
-                        uci.mem_read(address, size), self.endianness, signed=False
-                    )
-                )
+                self.sca_values_trace.append( int.from_bytes( uci.mem_read(address, size), self.endianness, signed=False))
 
     def trace_mem(self, uci, access, address, size, value, user_data):
         """ Hook that shows a visual trace of memory accesses in the form '[address written to] <- value written' or 'value read <- [address read]' """
@@ -265,7 +268,7 @@ class rainbowBase:
 
     def disassemble_single(self, addr, size):
         """ Disassemble a single instruction at address """
-        instruction = self.emu.mem_read(addr, 2 * size)
+        instruction = self.emu.mem_read(addr, size)
         return next(self.disasm.disasm_lite(bytes(instruction), addr, 1))
 
     def disassemble_single_detailed(self, addr, size):
@@ -283,28 +286,8 @@ class rainbowBase:
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
     def sca_code_trace(self, uci, address, size, data):
-        """ 
-        Hook that traces modified register values in side-channel mode. 
-        
-        Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction. 
-        Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction. 
-        """
-        if self.trace:
-            if self.reg_leak is not None:
-                for x in self.reg_leak[1]:
-                    if x not in self.TRACE_DISCARD:
-                        self.sca_address_trace.append(self.reg_leak[0])
-                        self.sca_values_trace.append(uci.reg_read(self.reg_map[x]))
-
-            self.reg_leak = None
-
-            ins = self.disassemble_single_detailed(address, size)
-            _regs_read, regs_written = ins.regs_access()
-            if len(regs_written) > 0:
-                self.reg_leak = (
-                    f"{address:8X} {ins.mnemonic:<6}  {ins.op_str}",
-                    list(map(ins.reg_name, regs_written))
-                )
+        from .tracers import regs_hw_sum_trace
+        regs_hw_sum_trace(self, address, size, data)
           
     def code_trace(self, uci, address, size, data):
         """ 
@@ -313,6 +296,7 @@ class rainbowBase:
         Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction. 
         Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction. 
         """
+        self.profile_counter += 1
         if address in self.breakpoints:
             print(f"\n*** Breakpoint hit at 0x{address:x} ***")
             self.bkpt_dump()
@@ -337,11 +321,8 @@ class rainbowBase:
 
     def unmapped_hook(self, uci, access, address, size, value, user_data):
         """ Warns where the unicorn engine stopped on an unmapped access """
-        print(
-            f"Unmapped fetch at 0x{address:x} (Emu stopped in {uci.reg_read(self.pc):x})",
-            end="",
-        )
-        raise Exception("Unmapped")
+        uci.emu_stop()
+        raise Exception(f"Unmapped fetch at 0x{address:x} (Emu stopped in {uci.reg_read(self.pc):x})")
 
     def return_force(self):
         """ Performs a simulated function return """
@@ -358,7 +339,8 @@ class rainbowBase:
         if address in self.function_names.keys():
             f = self.function_names[address]
             if self.function_calls:
-                print(f"\n\t {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
+                print(f"\n[{self.profile_counter:>8} ins]   {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
+                self.profile_counter = 0
 
             if f in self.stubbed_functions:
                 r = self.stubbed_functions[f](self)
