@@ -68,10 +68,10 @@ def elfloader(elf_file, emu, verbose=False):
         pass
 
     ## TODO: when the ELF has relocated functions exported, LIEF fails on get_function_address
-    for i in elffile.exported_functions:
+    for i in elffile.symbols:
         try:
             emu.functions.update(
-                {i: ((elffile.get_function_address(i) >> 1) << 1)}
+                {i.name: ((i.value >> 1) << 1)}
             )  # failsafe for arm thumb
         except Exception as e:
             if verbose:
