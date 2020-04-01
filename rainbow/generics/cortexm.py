@@ -27,7 +27,7 @@ class rainbow_cortexm(rainbowBase):
 
     STACK_ADDR = 0x90000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
-    INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
+    INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "cpsr", "pc", "lr"]
     TRACE_DISCARD = []
 
     def __init__(self, trace=True, sca_mode=False, local_vars={}):
