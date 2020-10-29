@@ -199,7 +199,6 @@ class rainbowBase:
             self.RegistersBackup = [0]*len(self.reg_map)
             ret = self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
-            print("*****", e)
             self.emu.emu_stop()
             return True
         return False
