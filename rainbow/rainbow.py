@@ -42,7 +42,6 @@ class rainbowBase:
         self.emu = None
         self.disasm = None
         self.uc_reg = None
-        self.mapped_regions = []
         self.page_size = 0
         self.functions = {}
         self.function_names = {}
@@ -77,28 +76,51 @@ class rainbowBase:
         self.sca_values_trace = []
 
     # convenience function
-    def map_space(self, a, b, verbose=False):
+    def map_space(self, a_, b_, verbose=False):
         """ Maps area into the unicorn emulator between a and b, or nothing if it was already mapped.
         Only completes missing portions if there is overlapping with a previously-mapped segment """
-        if any(map(lambda x: a >= x[0] and b <= x[1], self.mapped_regions)):
+        regions = list(self.emu.mem_regions())
+        if any(map(lambda x: a_ >= x[0] and b_ <= x[1], regions)):
             if verbose:
-                print(f"Did not map {a:x} {b-a:x} as it is already mapped.")
+                print(f"Did not map {a_:x} {b_-a_:x} as it is already mapped.")
             return
 
-        if a == b:
+        if a_ == b_:
             return
+
+        ## Align start and end addresses
+        a = a_
+        if a & (self.page_size - 1):
+            a = (a >> self.page_shift) << self.page_shift
+        remainder = a_ - a 
+        b = b_ - a_ + remainder
+        if b & (self.page_size - 1):
+            b = ((b >> self.page_shift) << self.page_shift) + self.page_size
+        b += a
 
         overlap = 0
-        for r_start, r_end in self.mapped_regions:
+        for r_start, r_end, _ in regions:
             # check for overlaps
-            if a < r_start and r_start < b <= r_end:
+            if a < r_start and r_start < b <= r_end+1:
                 overlap = 1
                 aa = a
-                bb = r_start
+                bb = r_end
                 break
-            elif r_end > a >= r_start and b > r_end:
+            elif r_end > a >= r_start-1 and b > r_end:
                 overlap = 1
-                aa = r_end
+                aa = r_start
+                bb = b
+                break
+            elif b == r_start:
+                ## prepend
+                overlap = 1
+                aa = a 
+                bb = r_end
+                break
+            elif a == r_end+1:
+                ## append
+                overlap = 1
+                aa = r_start
                 bb = b
                 break
 
@@ -107,20 +129,30 @@ class rainbowBase:
             bb = b
 
         base = aa
-        if base & (self.page_size - 1):
-            base = (base >> self.page_shift) << self.page_shift
-        remainder = aa - base
-        size = bb - aa + remainder
+        size = bb - aa
         if size & (self.page_size - 1):
             size = ((size >> self.page_shift) << self.page_shift) + self.page_size
 
+        data = None
+        if overlap == 1:
+            ## we want to extend an existing memory region
+            ## so we unmap the oldest one and remap the
+            ## new region
+            size += r_end - r_start + 1
+            ## need to save data before unmapping
+            data = self.emu.mem_read(r_start, r_end-r_start+1)
+            ret = self.emu.mem_unmap(r_start, r_end-r_start+1)
+            if ret is not None:
+                raise Exception(ret)
+
         if verbose:
-            print(f"Mapping : {base:x} {size:x}")
+            print(f"Mapping : 0x{base:x}-0x{base+size:x}")
 
         ret = self.emu.mem_map(base, size)
+        if data is not None:
+            self.emu.mem_write(r_start, bytes(data))
         if ret is not None:
-            print(ret)
-        self.mapped_regions.append((base, base + size))
+            raise Exception(ret)
 
     def __setitem__(self, inp, val):
         """ Sets a register, memory address or memory range to a value. Handles writing ints or bytes. 
