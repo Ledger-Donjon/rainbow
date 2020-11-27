@@ -19,7 +19,7 @@
 
 import math
 import os
-
+import weakref
 import capstone as cs
 import colorama
 import lief
@@ -30,6 +30,25 @@ from pygments.lexers import NasmLexer
 
 from rainbow.color_functions import color
 from rainbow.loaders import load_selector
+
+
+class HookWeakMethod:
+    """
+    Class to pass instance method callbacks to unicorn with weak referencing to
+    prevent circular dependencies.
+
+    Circular dependencies blocks the GC to clean the rainbowBase at the correct
+    time, and this causes memory troubles...
+
+    We cannot use directly weakref.WeakMethod since __call__ does not execute
+    the method, but returns it. This class does call the method when __call__
+    is executed.
+    """
+    def __init__(self, method):
+        self.method = weakref.WeakMethod(method)
+
+    def __call__(self, *args, **kwargs):
+        self.method()(*args, **kwargs)
 
 
 class rainbowBase:
@@ -69,6 +88,11 @@ class rainbowBase:
 
         # Take into account another leakage model
         self.sca_HD = sca_HD
+
+    def __del__(self):
+        # Unmap all memory regions.
+        for start, end, _ in self.emu.mem_regions():
+            self.emu.mem_unmap(start, end - start + 1)
 
     def trace_reset(self):
         self.reg_leak = None
@@ -241,19 +265,25 @@ class rainbowBase:
         self.map_space(*self.STACK)
 
         ## Add hooks
-        self.mem_unmapped_hook = self.emu.hook_add(uc.UC_HOOK_MEM_UNMAPPED, self.unmapped_hook)
-        self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK, self.block_handler)
+        self.mem_unmapped_hook = self.emu.hook_add(uc.UC_HOOK_MEM_UNMAPPED,
+            HookWeakMethod(self.unmapped_hook))
+        self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
+            HookWeakMethod(self.block_handler))
         if sca_mode:
             if (self.sca_HD):
-                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_traceHD)
+                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
+                    HookWeakMethod(self.sca_code_traceHD))
             else:
-                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_trace)
+                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
+                    HookWeakMethod(self.sca_code_trace))
             self.tm_hook = self.emu.hook_add(
-                uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.sca_trace_mem
-            )
+                uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                HookWeakMethod(self.sca_trace_mem))
         else:
-            self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE, self.code_trace)
-            self.mem_access_hook = self.emu.hook_add( uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.trace_mem)
+            self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
+                HookWeakMethod(self.code_trace))
+            self.mem_access_hook = self.emu.hook_add( uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                HookWeakMethod(self.trace_mem))
 
     def remove_hooks(self):
         self.emu.hook_del(self.mem_access_hook)

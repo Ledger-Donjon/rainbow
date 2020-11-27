@@ -19,7 +19,7 @@
 import unicorn as uc
 import capstone as cs
 from struct import unpack
-from rainbow.rainbow import rainbowBase
+from rainbow.rainbow import rainbowBase, HookWeakMethod
 from rainbow.color_functions import color
 
 
@@ -53,7 +53,7 @@ class rainbow_cortexm(rainbowBase):
         # block hook rather than a code fetch hook
         self.map_space(0xfffffff0, 0xffffffff)
 
-        self.emu.hook_add(uc.UC_HOOK_INTR, self.intr_hook)
+        self.emu.hook_add(uc.UC_HOOK_INTR, HookWeakMethod(self.intr_hook))
 
     def reset_stack(self):
         self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
