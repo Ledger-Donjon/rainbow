@@ -28,6 +28,15 @@ If you wish to use another version of Python, you can drop an issue and will loo
 
 Some examples will use Lascar's side-channel attacks and try to display traces using a custom plotter built on top of [Vispy](https://github.com/vispy/vispy). If you want to run those, you will need Vispy and `pyqt5` for the instruction trace + execution trace viewer.
 
+In the `./examples/` folder, you will find:
+- [x64_pimpmyxor.py](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/x64_pimpmyxor.py) : basic emulation of [this challenge](https://github.com/GreHack/CTF-challs/tree/master/2018/Reverse/100%20-%20pimp_my_xor)
+- [CortexM_AES](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/CortexM_AES/cortexm_aes.py) : a simple ARM Thumb AES
+- [Hacklu2009](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/hacklu2009/go.py)  : a side-channel solution of a whitebox challenge
+- HW_analysis : a side-channel simulation of a [pin comparison](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/HW_analysis/pin_compare.py), and a [fault injection](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/HW_analysis/pin_fault.py) simulation
+- [ledger_ctf2](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/ledger_ctf2/ledger_ctf2.py) : side-channel solution of a whitebox challenge
+- [OAES](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/OAES/OAES_x86.py) : an x86 whitebox tracing example that discards useless instructions
+- [SecAESSTM32](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/SecAESSTM32/go.py) : a starting point to test ANSSI's STM32 [secure AES implementation](https://github.com/ANSSI-FR/SecAESSTM32)
+
 ## Example output
 
 See the `x64_pimp_my_xor` example for a debug trace.

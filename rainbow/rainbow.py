@@ -19,7 +19,7 @@
 
 import math
 import os
-
+import weakref
 import capstone as cs
 import colorama
 import lief
@@ -32,6 +32,25 @@ from rainbow.color_functions import color
 from rainbow.loaders import load_selector
 
 
+class HookWeakMethod:
+    """
+    Class to pass instance method callbacks to unicorn with weak referencing to
+    prevent circular dependencies.
+
+    Circular dependencies blocks the GC to clean the rainbowBase at the correct
+    time, and this causes memory troubles...
+
+    We cannot use directly weakref.WeakMethod since __call__ does not execute
+    the method, but returns it. This class does call the method when __call__
+    is executed.
+    """
+    def __init__(self, method):
+        self.method = weakref.WeakMethod(method)
+
+    def __call__(self, *args, **kwargs):
+        self.method()(*args, **kwargs)
+
+
 class rainbowBase:
 
     """ Emulation base class """
@@ -42,10 +61,10 @@ class rainbowBase:
         self.emu = None
         self.disasm = None
         self.uc_reg = None
-        self.mapped_regions = []
         self.page_size = 0
         self.functions = {}
         self.function_names = {}
+        self.profile_counter = 0
 
         self.OTHER_REGS = {}
         self.OTHER_REGS_NAMES = {}
@@ -70,34 +89,62 @@ class rainbowBase:
         # Take into account another leakage model
         self.sca_HD = sca_HD
 
+    def __del__(self):
+        # Unmap all memory regions.
+        for start, end, _ in self.emu.mem_regions():
+            self.emu.mem_unmap(start, end - start + 1)
+
     def trace_reset(self):
         self.reg_leak = None
         self.sca_address_trace = []
         self.sca_values_trace = []
 
     # convenience function
-    def map_space(self, a, b, verbose=False):
+    def map_space(self, a_, b_, verbose=False):
         """ Maps area into the unicorn emulator between a and b, or nothing if it was already mapped.
         Only completes missing portions if there is overlapping with a previously-mapped segment """
-        if any(map(lambda x: a >= x[0] and b <= x[1], self.mapped_regions)):
+        regions = list(self.emu.mem_regions())
+        if any(map(lambda x: a_ >= x[0] and b_ <= x[1], regions)):
             if verbose:
-                print(f"Did not map {a:x} {b-a:x} as it is already mapped.")
+                print(f"Did not map {a_:x} {b_-a_:x} as it is already mapped.")
             return
 
-        if a == b:
+        if a_ == b_:
             return
+
+        ## Align start and end addresses
+        a = a_
+        if a & (self.page_size - 1):
+            a = (a >> self.page_shift) << self.page_shift
+        remainder = a_ - a 
+        b = b_ - a_ + remainder
+        if b & (self.page_size - 1):
+            b = ((b >> self.page_shift) << self.page_shift) + self.page_size
+        b += a
 
         overlap = 0
-        for r_start, r_end in self.mapped_regions:
+        for r_start, r_end, _ in regions:
             # check for overlaps
-            if a < r_start and r_start < b <= r_end:
+            if a < r_start and r_start < b <= r_end+1:
                 overlap = 1
                 aa = a
-                bb = r_start
+                bb = r_end
                 break
-            elif r_end > a >= r_start and b > r_end:
+            elif r_end > a >= r_start-1 and b > r_end:
                 overlap = 1
-                aa = r_end
+                aa = r_start
+                bb = b
+                break
+            elif b == r_start:
+                ## prepend
+                overlap = 1
+                aa = a 
+                bb = r_end
+                break
+            elif a == r_end+1:
+                ## append
+                overlap = 1
+                aa = r_start
                 bb = b
                 break
 
@@ -106,18 +153,30 @@ class rainbowBase:
             bb = b
 
         base = aa
-        if base & (self.page_size - 1):
-            base = (base >> self.page_shift) << self.page_shift
-        remainder = aa - base
-        size = bb - aa + remainder
+        size = bb - aa
         if size & (self.page_size - 1):
             size = ((size >> self.page_shift) << self.page_shift) + self.page_size
 
-        if verbose:
-            print(f"Mapping : {base:x} {size:x}")
+        data = None
+        if overlap == 1:
+            ## we want to extend an existing memory region
+            ## so we unmap the oldest one and remap the
+            ## new region
+            size += r_end - r_start + 1
+            ## need to save data before unmapping
+            data = self.emu.mem_read(r_start, r_end-r_start+1)
+            ret = self.emu.mem_unmap(r_start, r_end-r_start+1)
+            if ret is not None:
+                raise Exception(ret)
 
-        self.emu.mem_map(base, size)
-        self.mapped_regions.append((base, base + size))
+        if verbose:
+            print(f"Mapping : 0x{base:x}-0x{base+size:x}")
+
+        ret = self.emu.mem_map(base, size)
+        if data is not None:
+            self.emu.mem_write(r_start, bytes(data))
+        if ret is not None:
+            raise Exception(ret)
 
     def __setitem__(self, inp, val):
         """ Sets a register, memory address or memory range to a value. Handles writing ints or bytes. 
@@ -147,21 +206,22 @@ class rainbowBase:
         else:
             raise Exception("Unhandled value type", type(val))
 
+        ret = None 
         if isinstance(inp, str):  # regname
             v = self.OTHER_REGS_NAMES.get(inp, None)
             if v is not None:
-                self.emu.mem_write(v, val.to_bytes(self.word_size, self.endianness))
+                ret = self.emu.mem_write(v, val.to_bytes(self.word_size, self.endianness))
             else:
-                self.emu.reg_write(self.reg_map[inp], val)
+                ret = self.emu.reg_write(self.reg_map[inp], val)
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
-            self.emu.mem_write(inp, value)
+            ret = self.emu.mem_write(inp, value)
         elif isinstance(inp, slice):
             if inp.step is not None:
                 return NotImplementedError
             self.map_space(inp.start, inp.stop)
             v = val.to_bytes(length, self.endianness)
-            self.emu.mem_write(inp.start, v*(inp.stop-inp.start))
+            ret = self.emu.mem_write(inp.start, v*(inp.stop-inp.start))
         else:
             raise Exception("Invalid range type for write : ", type(inp), inp)
 
@@ -186,7 +246,7 @@ class rainbowBase:
         """ Load a file into the emulator's memory """
         return load_selector(filename, self, typ, verbose=verbose)
 
-    def _start(self, begin, end, timeout, count):
+    def _start(self, begin, end, timeout=None, count=None):
         """ Begin emulation """
         ret = 0
         try:
@@ -195,7 +255,6 @@ class rainbowBase:
             self.RegistersBackup = [0]*len(self.reg_map)
             ret = self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
-            print(ret, e)
             self.emu.emu_stop()
             return True
         return False
@@ -206,21 +265,31 @@ class rainbowBase:
         self.map_space(*self.STACK)
 
         ## Add hooks
-        self.emu.hook_add(uc.UC_HOOK_MEM_UNMAPPED, self.unmapped_hook)
-        self.emu.hook_add(uc.UC_HOOK_BLOCK, self.block_handler)
+        self.mem_unmapped_hook = self.emu.hook_add(uc.UC_HOOK_MEM_UNMAPPED,
+            HookWeakMethod(self.unmapped_hook))
+        self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
+            HookWeakMethod(self.block_handler))
         if sca_mode:
             if (self.sca_HD):
-                self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_traceHD)
+                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
+                    HookWeakMethod(self.sca_code_traceHD))
             else:
-                self.emu.hook_add(uc.UC_HOOK_CODE, self.sca_code_trace)
-            self.emu.hook_add(
-                uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.sca_trace_mem
-            )
+                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
+                    HookWeakMethod(self.sca_code_trace))
+            self.tm_hook = self.emu.hook_add(
+                uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                HookWeakMethod(self.sca_trace_mem))
         else:
-            self.emu.hook_add(uc.UC_HOOK_CODE, self.code_trace)
-            self.emu.hook_add(
-                uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE, self.trace_mem
-            )
+            self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
+                HookWeakMethod(self.code_trace))
+            self.mem_access_hook = self.emu.hook_add( uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                HookWeakMethod(self.trace_mem))
+
+    def remove_hooks(self):
+        self.emu.hook_del(self.mem_access_hook)
+        self.emu.hook_del(self.code_hook)
+        self.emu.hook_del(self.mem_unmapped_hook)
+        self.emu.hook_del(self.block_hook)
 
     def add_bkpt(self, address):
         if address not in self.breakpoints:
@@ -242,15 +311,10 @@ class rainbowBase:
     def sca_trace_mem(self, uci, access, address, size, value, user_data):
         """ Hook that stores memory accesses in side-channel mode. Stores read and written values """
         if self.mem_trace:
-            self.sca_address_trace.append(f"{uci.reg_read(self.pc):8x}   @[{address:08X}]")
             if access == uc.UC_MEM_WRITE:
                 self.sca_values_trace.append(value)
             else:
-                self.sca_values_trace.append(
-                    int.from_bytes(
-                        uci.mem_read(address, size), self.endianness, signed=False
-                    )
-                )
+                self.sca_values_trace.append( int.from_bytes( uci.mem_read(address, size), self.endianness, signed=False))
 
     def trace_mem(self, uci, access, address, size, value, user_data):
         """ Hook that shows a visual trace of memory accesses in the form '[address written to] <- value written' or 'value read <- [address read]' """
@@ -269,7 +333,7 @@ class rainbowBase:
 
     def disassemble_single(self, addr, size):
         """ Disassemble a single instruction at address """
-        instruction = self.emu.mem_read(addr, 2 * size)
+        instruction = self.emu.mem_read(addr, size)
         return next(self.disasm.disasm_lite(bytes(instruction), addr, 1))
 
     def disassemble_single_detailed(self, addr, size):
@@ -287,28 +351,8 @@ class rainbowBase:
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
     def sca_code_trace(self, uci, address, size, data):
-        """ 
-        Hook that traces modified register values in side-channel mode. 
-        
-        Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction. 
-        Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction. 
-        """
-        if self.trace:
-            if self.reg_leak is not None:
-                for x in self.reg_leak[1]:
-                    if x not in self.TRACE_DISCARD:
-                        self.sca_address_trace.append(self.reg_leak[0])
-                        self.sca_values_trace.append(uci.reg_read(self.reg_map[x]))
-
-            self.reg_leak = None
-
-            ins = self.disassemble_single_detailed(address, size)
-            _regs_read, regs_written = ins.regs_access()
-            if len(regs_written) > 0:
-                self.reg_leak = (
-                    f"{address:8X} {ins.mnemonic:<6}  {ins.op_str}",
-                    list(map(ins.reg_name, regs_written))
-                )
+        from .tracers import regs_hw_sum_trace
+        regs_hw_sum_trace(self, address, size, data)
           
     def sca_code_traceHD(self, uci, address, size, data):
         """
@@ -340,6 +384,7 @@ class rainbowBase:
         Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction. 
         Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction. 
         """
+        self.profile_counter += 1
         if address in self.breakpoints:
             print(f"\n*** Breakpoint hit at 0x{address:x} ***")
             self.bkpt_dump()
@@ -378,11 +423,8 @@ class rainbowBase:
 
     def unmapped_hook(self, uci, access, address, size, value, user_data):
         """ Warns where the unicorn engine stopped on an unmapped access """
-        print(
-            f"Unmapped fetch at 0x{address:x} (Emu stopped in {uci.reg_read(self.pc):x})",
-            end="",
-        )
-        raise Exception("Unmapped")
+        uci.emu_stop()
+        raise Exception(f"Unmapped fetch at 0x{address:x} (Emu stopped in {uci.reg_read(self.pc):x})")
 
     def return_force(self):
         """ Performs a simulated function return """
@@ -399,7 +441,8 @@ class rainbowBase:
         if address in self.function_names.keys():
             f = self.function_names[address]
             if self.function_calls:
-                print(f"\n\t {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
+                print(f"\n[{self.profile_counter:>8} ins]   {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
+                self.profile_counter = 0
 
             if f in self.stubbed_functions:
                 r = self.stubbed_functions[f](self)
