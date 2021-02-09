@@ -47,8 +47,6 @@ def elfloader(elf_file, emu, verbose=False):
         emu.map_space(section.virtual_address, section.virtual_address + section.size)
         emu.emu.mem_write(section.virtual_address, bytes(section.content))
 
-    emu.functions = {}
-
     ## Handle relocations
     for r in elffile.relocations:
         if r.symbol.is_function:
@@ -63,19 +61,31 @@ def elfloader(elf_file, emu, verbose=False):
 
     # lief > 0.10
     try:
-        emu.functions.update( {f.name:f.address for f in elffile.exported_functions} )
+        for f in elffile.exported_functions:
+            tmpn = f.name
+            c = 0
+            while tmpn in emu.functions:
+                c += 1
+                tmpn = f.name + str(c)
+            emu.functions[tmpn] = (f.address >> 1) << 1
     except:
         pass
 
     ## TODO: when the ELF has relocated functions exported, LIEF fails on get_function_address
     for i in elffile.symbols:
-        try:
-            emu.functions.update(
-                {i.name: ((i.value >> 1) << 1)}
-            )  # failsafe for arm thumb
-        except Exception as e:
-            if verbose:
-                print(e, i)
+        if i.type == lief.ELF.SYMBOL_TYPES.FUNC:
+            try:
+                tmpn = i.name
+                addr = (i.value >> 1) << 1 # failsafe for arm thumb
+                if emu.functions[tmpn] != addr:
+                    c = 0
+                    while tmpn in emu.functions.keys():
+                        c += 1
+                        tmpn = i.name + str(c)
+                    emu.functions[tmpn] = addr
+            except Exception as e:
+                if verbose:
+                    print(e, i)
 
     emu.function_names = {emu.functions[x]: x for x in emu.functions.keys()}
     return elffile.entrypoint
