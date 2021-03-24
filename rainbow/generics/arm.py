@@ -32,7 +32,7 @@ class rainbow_arm(rainbowBase):
     def __init__(self, trace=True, sca_mode=False, local_vars={}):
         super().__init__(trace, sca_mode)
         self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM)
-        self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM | cs.CS_MODE_THUMB)
+        self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM)
         self.disasm.detail = True
         self.word_size = 4
         self.endianness = "little"
@@ -58,4 +58,12 @@ class rainbow_arm(rainbowBase):
         self["pc"] = self["lr"]
 
     def block_handler(self, uci, address, size, user_data):
+        # Thumb execution state bit is bit 5 in CPSR
+        thumb_bit = self["cpsr"] & 0x20
+        if thumb_bit == 0:
+            # switch disassembler to ARM mode
+            self.disasm.mode = cs.CS_MODE_ARM
+        else:
+            self.disasm.mode = cs.CS_MODE_THUMB
+
         self.base_block_handler(address)
