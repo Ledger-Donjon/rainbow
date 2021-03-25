@@ -71,7 +71,7 @@ class rainbow_cortexm(rainbowBase):
         self['control'] = 0
 
         # TODO: handle other software-triggered exceptions (like bkpt)
-        self["pc"] = self.functions["SVC_Handler"] | 1
+        self['pc'] = self.functions["SVC_Handler"] | 1
         return False 
 
     def start(self, begin, end, timeout=0, count=0):
@@ -86,7 +86,7 @@ class rainbow_cortexm(rainbowBase):
             is_unpriv = (address >> 3) & 1
             self['control'] = (is_psp << 1) | is_unpriv
 
-            sp = self["sp"]
+            sp = self['sp']
             nvic_stack_bytes = self[sp:sp+32]
             nvic_stack = unpack('8I', nvic_stack_bytes)
 
@@ -94,7 +94,9 @@ class rainbow_cortexm(rainbowBase):
                 self[reg] = nvic_stack[i]
 
             self['ipsr'] = 0
-            self["sp"] = sp + 32
+            self['sp'] = sp + 32
             return True
 
-        self.base_block_handler(address)
+        # In a Cortex M, all code is in thumb mode
+        # So all function addresses are odd
+        self.base_block_handler(address | 1)

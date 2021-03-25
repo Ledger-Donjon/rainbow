@@ -51,9 +51,9 @@ def elfloader(elf_file, emu, verbose=False):
     for r in elffile.relocations:
         if r.symbol.is_function:
             if r.symbol.value == 0:
-                rsv = r.address - (r.address & 1)
+                rsv = r.address
             else:
-                rsv = r.symbol.value - (r.symbol.value & 1)
+                rsv = r.symbol.value
             emu.functions[r.symbol.name] = rsv
             if verbose:
                 print(f"Relocating {r.symbol.name} at {r.address:x} to {rsv:x}")
@@ -67,7 +67,7 @@ def elfloader(elf_file, emu, verbose=False):
             while tmpn in emu.functions:
                 c += 1
                 tmpn = f.name + str(c)
-            emu.functions[tmpn] = (f.address >> 1) << 1
+            emu.functions[tmpn] = f.address
     except:
         pass
 
@@ -76,7 +76,7 @@ def elfloader(elf_file, emu, verbose=False):
         if i.type == lief.ELF.SYMBOL_TYPES.FUNC:
             try:
                 tmpn = i.name
-                addr = (i.value >> 1) << 1 # failsafe for arm thumb
+                addr = i.value
                 if emu.functions[tmpn] != addr:
                     c = 0
                     while tmpn in emu.functions.keys():

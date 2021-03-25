@@ -59,11 +59,11 @@ class rainbow_arm(rainbowBase):
 
     def block_handler(self, uci, address, size, user_data):
         # Thumb execution state bit is bit 5 in CPSR
-        thumb_bit = self["cpsr"] & 0x20
+        thumb_bit = (self["cpsr"]>>5) & 1
         if thumb_bit == 0:
             # switch disassembler to ARM mode
             self.disasm.mode = cs.CS_MODE_ARM
         else:
             self.disasm.mode = cs.CS_MODE_THUMB
 
-        self.base_block_handler(address)
+        self.base_block_handler(address | thumb_bit)
