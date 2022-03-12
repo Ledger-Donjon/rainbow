@@ -32,10 +32,6 @@ def show_nicv(values, traces, nr_digits=4):
     t = TraceBatchContainer(
         traces,
         values,
-        leakage_processing=lambda x: np.array(
-            [hamming(i) for i in x], dtype=np.uint
-        )
-        + np.random.normal(0, 0.5, len(x)),
     )
 
     s = Session(t)
