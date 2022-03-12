@@ -44,10 +44,10 @@ def show_nicv(values, traces, nr_digits=4):
     # s.add_engines([NicvEngine('a'+str(i), lambda v,z=i:v[z], range(9)) for i in range(nr_digits)])
 
     ## Difference leakage
-    s.add_engines([NicvEngine('a'+str(i), lambda v,z=i:np.int8(v[z]) - np.int8(STORED_PIN[z]), range(-9,8)) for i in range(nr_digits)])
+    s.add_engines([NicvEngine('a'+str(i), lambda v,z=i:9+np.int8(v[z]) - np.int8(ord(STORED_PIN[z])), range(17)) for i in range(nr_digits)])
 
     ## below is a variant on the carry bit
-    # s.add_engines([NicvEngine('c'+str(i), lambda v,z=i:v[z]>int(STORED_PIN[z]), range(16)) for i in range(nr_digits)])
+    # s.add_engines([NicvEngine('c'+str(i), lambda v,z=i:int(v[z]>ord(STORED_PIN[z])), range(2)) for i in range(nr_digits)])
 
     s.run()
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     for i in range(N):
         input_pin = "".join(random.choice("123456789") for _ in range(len(STORED_PIN)))
         comparePin(e, input_pin, STORED_PIN)
-        values.append([ord(x) - ord("1") for x in input_pin + STORED_PIN])
+        values.append([ord(x) for x in input_pin + STORED_PIN])
         traces.append(e.sca_values_trace.copy())
 
     print("Using Lascar to get an NICV")
