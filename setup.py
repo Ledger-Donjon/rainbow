@@ -29,7 +29,7 @@ setup(
         "pygments",
     ],
     packages=find_packages(),
-    package_data={'': ['*.pickle']},
+    package_data={'': ['*.pickle', '*.css']},
     version=1.0,
     author="Victor Servant",
     author_email="victor.servant@ledger.fr",
