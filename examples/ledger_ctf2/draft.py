@@ -17,9 +17,6 @@ e[argv + 8] = input_buf
 e["rdi"] = 2  # argc
 e["rsi"] = argv
 
-def bypass(emu):
-  return True
-
 from random import getrandbits
 
 if SCA_EXEC:
@@ -34,7 +31,6 @@ else:
 def pystrtol(emu):
   ad = emu['rdi']
   emu['rax'] = int(emu[ad:ad+2], 16)
-  return True
 
 def pyputs(emu):
   src = emu['rdi']
@@ -44,13 +40,12 @@ def pyputs(emu):
     print(chr(c[0]), end='' )
     i += 1
     c = emu[src+i]
-  return True
 
-e.stubbed_functions['time'] = bypass 
-e.stubbed_functions['srand'] = bypass 
-e.stubbed_functions['strtol'] = pystrtol 
-e.stubbed_functions['clock_gettime'] = bypass 
-e.stubbed_functions['puts'] = pyputs
+e.hook_bypass("time")
+e.hook_bypass("srand")
+e.hook_bypass("strtol", pystrtol)
+e.hook_bypass("clock_gettime")
+e.hook_bypass("puts", pyputs)
 
 if SCA_EXEC:
   e.trace_regs = 1
@@ -59,10 +54,12 @@ else:
   e.trace = 0
 # e.function_calls = True
 
-e.stubbed_functions['rand'] = lambda emu: pyrand(emu,0) 
+e.hook_bypass("rand", lambda emu: pyrand(emu,0))
+
 e.start(e.functions['main'], 0x103c)
 print('first part done')
-e.stubbed_functions['rand'] = lambda emu: pyrand(emu,7) 
+
+e.hook_bypass("rand", lambda emu: pyrand(emu,7))
 
 if SCA_EXEC:
   e.start(0x10ba, 0x1151, count=5000)
