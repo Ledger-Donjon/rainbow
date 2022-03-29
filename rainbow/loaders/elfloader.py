@@ -27,16 +27,26 @@ def elfloader(elf_file, emu, verbose=False):
 
     if len(list(elffile.segments)) > 0:
         for segment in elffile.segments:
-            if segment.type == lief.ELF.SEGMENT_TYPES.LOAD:
-                for section in segment.sections:
-                    if verbose:
-                        print(
-                            f"[=] Writing {section.name} on {section.virtual_address:x} - {section.virtual_address+section.size:x}"
-                        )
-                    emu.map_space(
-                        section.virtual_address, section.virtual_address + section.size
+            # Only consider LOAD segments
+            if segment.type != lief.ELF.SEGMENT_TYPES.LOAD:
+                continue
+
+            for section in segment.sections:
+                # Only consider PROGBITS sections flagged ALLOC
+                if (
+                    section.type != lief.ELF.SECTION_TYPES.PROGBITS
+                    or lief.ELF.SECTION_FLAGS.ALLOC not in section.flags_list
+                ):
+                    continue
+
+                if verbose:
+                    print(
+                        f"[=] Writing {section.name} on {section.virtual_address:x} - {section.virtual_address+section.size:x}"
                     )
-                    emu.emu.mem_write(section.virtual_address, bytes(section.content))
+                emu.map_space(
+                    section.virtual_address, section.virtual_address + section.size
+                )
+                emu.emu.mem_write(section.virtual_address, bytes(section.content))
     else:
         # if there are no segments, still attempt to map .text area
         section = elffile.get_section(".text")
