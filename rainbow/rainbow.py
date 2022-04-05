@@ -246,16 +246,18 @@ class rainbowBase:
         """ Load a file into the emulator's memory """
         return load_selector(filename, self, typ, verbose=verbose)
 
-    def _start(self, begin, end, timeout=None, count=None):
+    def _start(self, begin, end, timeout=None, count=None, verbose=True):
         """ Begin emulation """
-        ret = 0
         try:
             # Copy the original registers into the backup before starting the process
             # This is for the Hamming Distance leakage model
             self.RegistersBackup = [0]*len(self.reg_map)
-            ret = self.emu.emu_start(begin, end, timeout=timeout, count=count)
+            self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
             self.emu.emu_stop()
+            if verbose:
+                pc = self.emu.reg_read(uc.arm_const.UC_ARM_REG_PC)
+                print(f"[*] Emulation crashed at 0x{pc:X}: {e}")
             return True
         return False
 
