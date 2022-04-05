@@ -267,8 +267,6 @@ class rainbowBase:
         self.map_space(*self.STACK)
 
         ## Add hooks
-        self.mem_unmapped_hook = self.emu.hook_add(uc.UC_HOOK_MEM_UNMAPPED,
-            HookWeakMethod(self.unmapped_hook))
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
             HookWeakMethod(self.block_handler))
         if sca_mode:
@@ -290,7 +288,6 @@ class rainbowBase:
     def remove_hooks(self):
         self.emu.hook_del(self.mem_access_hook)
         self.emu.hook_del(self.code_hook)
-        self.emu.hook_del(self.mem_unmapped_hook)
         self.emu.hook_del(self.block_hook)
 
     def add_bkpt(self, address):
@@ -422,11 +419,6 @@ class rainbowBase:
             else:
                 adr, size, ins, op_str = self.disassemble_single(address, size)
                 self.print_asmline(adr, ins, op_str)
-
-    def unmapped_hook(self, uci, access, address, size, value, user_data):
-        """ Warns where the unicorn engine stopped on an unmapped access """
-        uci.emu_stop()
-        raise Exception(f"Unmapped fetch at 0x{address:x} (Emu stopped in {uci.reg_read(self.pc):x})")
 
     def return_force(self):
         """ Performs a simulated function return """
