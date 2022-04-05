@@ -106,7 +106,7 @@ class rainbowBase:
         regions = list(self.emu.mem_regions())
         if any(map(lambda x: a_ >= x[0] and b_ <= x[1], regions)):
             if verbose:
-                print(f"Did not map {a_:x} {b_-a_:x} as it is already mapped.")
+                print(f"[*] Did not map 0x{a_:X},0x{b_-a_:X} as it is already mapped")
             return
 
         if a_ == b_:
@@ -170,7 +170,7 @@ class rainbowBase:
                 raise Exception(ret)
 
         if verbose:
-            print(f"Mapping : 0x{base:x}-0x{base+size:x}")
+            print(f"[*] Mapping 0x{base:X}-0x{base+size:X}")
 
         ret = self.emu.mem_map(base, size)
         if data is not None:
@@ -223,7 +223,7 @@ class rainbowBase:
             v = val.to_bytes(length, self.endianness)
             ret = self.emu.mem_write(inp.start, v*(inp.stop-inp.start))
         else:
-            raise Exception("Invalid range type for write : ", type(inp), inp)
+            raise Exception("Invalid range type for write: ", type(inp), inp)
 
     def __getitem__(self, s):
         """ Reads from a register using its shortname, or from a memory address/region. """
