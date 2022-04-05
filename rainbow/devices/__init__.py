@@ -16,4 +16,4 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
-from .stm32 import rainbow_stm32f215
+from .stm32 import rainbow_stm32, rainbow_stm32f215, rainbow_stm32l431
