@@ -17,9 +17,10 @@
 # Copyright 2019 Victor Servant, Ledger SAS
 
 
+import functools
 import math
 import weakref
-from typing import Tuple
+from typing import Callable, Tuple
 import capstone as cs
 import colorama
 import unicorn as uc
@@ -329,6 +330,12 @@ class rainbowBase:
                 val = color("CYAN", f"{val:8x}")
                 print(f"  {val} <- [{addr}]", end=" ")
 
+    # Least-recently used cache for Capstone calls to disasm or disasm_lite
+    @staticmethod
+    @functools.lru_cache(maxsize=4096)
+    def _disassemble_cache(call: Callable, instruction: bytes, addr: int):
+        return next(call(instruction, addr, 1))
+
     def disassemble_single(self, addr: int, size: int) -> Tuple[int, int, str, str]:
         """Disassemble a single instruction using Capstone lite
 
@@ -338,13 +345,13 @@ class rainbowBase:
         If you want more information, you should use disassemble_single_detailed
         method, but is 30% slower according to Capstone documentation.
         """
-        instruction = self.emu.mem_read(addr, size)
-        return next(self.disasm.disasm_lite(bytes(instruction), addr, 1))
+        insn = self.emu.mem_read(addr, size)
+        return self._disassemble_cache(self.disasm.disasm_lite, bytes(insn), addr)
 
     def disassemble_single_detailed(self, addr: int, size: int) -> cs.CsInsn:
         """Disassemble a single instruction using Capstone"""
-        instruction = self.emu.mem_read(addr, 2 * size)
-        return next(self.disasm.disasm(bytes(instruction), addr, 1))
+        insn = self.emu.mem_read(addr, 2 * size)
+        return self._disassemble_cache(self.disasm.disasm, bytes(insn), addr)
 
     def print_asmline(self, adr, ins, op_str):
         """ Pretty-print assembly using pygments syntax highlighting """
