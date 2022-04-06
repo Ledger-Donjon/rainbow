@@ -57,7 +57,7 @@ def elfloader(elf_file, emu, verbose=False):
         emu.map_space(section.virtual_address, section.virtual_address + section.size)
         emu.emu.mem_write(section.virtual_address, bytes(section.content))
 
-    ## Handle relocations
+    # Handle relocations
     for r in elffile.relocations:
         if r.symbol.is_function:
             if r.symbol.value == 0:
@@ -87,15 +87,18 @@ def elfloader(elf_file, emu, verbose=False):
             try:
                 tmpn = i.name
                 addr = i.value
-                if emu.functions[tmpn] != addr:
-                    c = 0
-                    while tmpn in emu.functions.keys():
-                        c += 1
-                        tmpn = i.name + str(c)
+                if tmpn in emu.functions.keys():
+                    if emu.functions[tmpn] != addr:
+                        c = 0
+                        while tmpn in emu.functions.keys():
+                            c += 1
+                            tmpn = i.name + str(c)
+                        emu.functions[tmpn] = addr
+                else:
                     emu.functions[tmpn] = addr
-            except Exception as e:
+            except Exception as exc:
                 if verbose:
-                    print(e, i)
+                    print(exc)
 
     emu.function_names = {emu.functions[x]: x for x in emu.functions.keys()}
     return elffile.entrypoint
