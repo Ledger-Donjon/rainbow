@@ -8,10 +8,6 @@ from binascii import unhexlify
 # We just force them to return 0
 def time(em):
     em["rax"] = 0
-    return True
-
-def srand(em):
-    return True
 
 def clock_gettime(em):
     em["rax"] = 0
@@ -22,9 +18,14 @@ def rand(em):
     return True
 
 
-e = rainbow_x64(sca_mode=True, local_vars=globals())
+e = rainbow_x64(sca_mode=True)
 e.load("ctf2", typ=".elf")
 e.mem_trace = 1
+
+e.hook_bypass("time", time)
+e.hook_bypass("srand")
+e.hook_bypass("clock_gettime", clock_gettime)
+e.hook_bypass("rand", rand)
 
 def main_func(inputt):
     e[0xd037a0:0xd037a0+16] = 0
@@ -37,9 +38,8 @@ def main_func(inputt):
 
     def strtol(em):
         em["rax"] = next(inp)
-        return True
 
-    e.stubbed_functions["strtol"] = strtol
+    e.hook_bypass("strtol", strtol)
 
     e.start(0xca9, 0x1038)
     print('', end='') # Here to avoid some obscure race condition in unicorn

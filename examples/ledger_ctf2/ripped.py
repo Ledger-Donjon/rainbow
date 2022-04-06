@@ -63,10 +63,9 @@ def main_func(inputt):
     # to 'strtol' to dispatch one byte at a time
     def strtol(em):
         em["eax"] = next(inp)
-        return True
 
     # Tell the emulator that we redefined this function
-    e.stubbed_functions["strtol"] = strtol
+    e.hook_bypass("strtol", strtol)
 
     # In order to attack this binary efficiently,
     # we need the 'rand' function to output 0 in the first
@@ -78,9 +77,8 @@ def main_func(inputt):
     def rand(em):
         # em["rax"] = randval
         em["rax"] = 0
-        return True
 
-    e.stubbed_functions["rand"] = rand
+    e.hook_bypass("rand", rand)
 
     # First part : retrieves the input and resets the scheduling
     ret = e.start(e.functions["main"], 0x1038)
@@ -96,7 +94,7 @@ def main_func(inputt):
         return True
 
     # This needs to be done again to point to the new function
-    e.stubbed_functions["rand"] = rand
+    e.hook_bypass("rand", rand)
 
     # Here we start at 0x10ba so that we skip the binary's self crc-checking
     # although it would work because we did not modify the binary, we would

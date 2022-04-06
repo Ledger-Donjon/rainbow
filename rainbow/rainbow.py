@@ -420,6 +420,31 @@ class rainbowBase:
                 adr, size, ins, op_str = self.disassemble_single(address, size)
                 self.print_asmline(adr, ins, op_str)
 
+    def hook_prolog(self, name, fn):
+        """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn, execution resumes into 'name' """
+        if name not in self.functions.keys():
+            raise Exception(f"'{name}' could not be found.")
+
+        def to_hook(x):
+            fn(x)
+            return False 
+
+        self.stubbed_functions[name] = to_hook 
+
+    def hook_bypass(self, name, fn=None):
+        """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn', execution returns to the caller """
+        if name not in self.functions.keys():
+            raise Exception(f"'{name}' could not be found.")
+
+        if fn is None:
+            fn = lambda x:x
+
+        def to_hook(x):
+            fn(x)
+            return True 
+
+        self.stubbed_functions[name] = to_hook 
+
     def return_force(self):
         """ Performs a simulated function return """
         raise NotImplementedError
