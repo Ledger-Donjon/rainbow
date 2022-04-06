@@ -18,11 +18,10 @@
 
 
 import math
-import os
 import weakref
+from typing import Tuple
 import capstone as cs
 import colorama
-import lief
 import unicorn as uc
 from pygments import highlight
 from pygments.formatters import TerminalFormatter as formatter
@@ -330,13 +329,20 @@ class rainbowBase:
                 val = color("CYAN", f"{val:8x}")
                 print(f"  {val} <- [{addr}]", end=" ")
 
-    def disassemble_single(self, addr, size):
-        """ Disassemble a single instruction at address """
+    def disassemble_single(self, addr: int, size: int) -> Tuple[int, int, str, str]:
+        """Disassemble a single instruction using Capstone lite
+
+        This returns the address, size, mnemonic, and operands of the
+        instruction at the specified address and size (in bytes).
+
+        If you want more information, you should use disassemble_single_detailed
+        method, but is 30% slower according to Capstone documentation.
+        """
         instruction = self.emu.mem_read(addr, size)
         return next(self.disasm.disasm_lite(bytes(instruction), addr, 1))
 
-    def disassemble_single_detailed(self, addr, size):
-        """ Disassemble a single instruction at addr """
+    def disassemble_single_detailed(self, addr: int, size: int) -> cs.CsInsn:
+        """Disassemble a single instruction using Capstone"""
         instruction = self.emu.mem_read(addr, 2 * size)
         return next(self.disasm.disasm(bytes(instruction), addr, 1))
 
