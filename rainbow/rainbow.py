@@ -404,7 +404,7 @@ class rainbowBase:
             while True:
                 s = input("Press Enter to continue, or Input an address and a size to display an address: ")
 
-                if s is '':
+                if s == '':
                     break
                 try:
                     address = eval("0x"+s.split(" ")[0])
