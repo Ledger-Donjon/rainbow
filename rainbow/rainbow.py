@@ -28,8 +28,9 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter as formatter
 from pygments.lexers import NasmLexer
 
-from rainbow.color_functions import color
-from rainbow.loaders import load_selector
+from .color_functions import color
+from .loaders import load_selector
+from .tracers import regs_hw_sum_trace
 
 
 class HookWeakMethod:
@@ -362,10 +363,9 @@ class rainbowBase:
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
-    def sca_code_trace(self, uci, address, size, data):
-        from .tracers import regs_hw_sum_trace
+    def sca_code_trace(self, _uci, address, size, data):
         regs_hw_sum_trace(self, address, size, data)
-          
+
     def sca_code_traceHD(self, uci, address, size, data):
         """
         Hook that traces modified register values in side-channel mode.
