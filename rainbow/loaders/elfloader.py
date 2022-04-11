@@ -32,11 +32,8 @@ def elfloader(elf_file, emu, verbose=False):
                 continue
 
             for section in segment.sections:
-                # Only consider PROGBITS sections flagged ALLOC
-                if (
-                    section.type != lief.ELF.SECTION_TYPES.PROGBITS
-                    or lief.ELF.SECTION_FLAGS.ALLOC not in section.flags_list
-                ):
+                # Only consider sections flagged ALLOC
+                if lief.ELF.SECTION_FLAGS.ALLOC not in section.flags_list:
                     continue
 
                 if verbose:
