@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -19,7 +19,6 @@
 import numpy as np
 from vispy import scene
 from vispy import color
-from vispy import visuals
 
 # Starting from https://gist.github.com/yhql/70c3e59019cb73ec83870e946166b95f
 
