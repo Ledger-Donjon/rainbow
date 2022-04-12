@@ -19,6 +19,7 @@
 import functools
 from typing import List, Tuple
 import capstone as cs
+import unicorn as uc
 
 from .utils import hw
 
@@ -34,7 +35,7 @@ def registers_accessed_by_instruction(insn: cs.CsInsn) -> Tuple[List[int], List[
     return insn.regs_access()
 
 
-def regs_hw_sum_trace(rbw, address: int, size: int, _data):
+def regs_hw_sum_trace(uci: uc.Uc, address: int, size: int, rbw):
     """Trace written registers Hamming weight
 
     For each instruction, this tracer sums the Hamming weight of all written
@@ -47,7 +48,7 @@ def regs_hw_sum_trace(rbw, address: int, size: int, _data):
     if ins is not None:
         # Find out which registers are modified
         _, regs_written = registers_accessed_by_instruction(ins)
-        v = sum(hw(rbw.emu.reg_read(r)) for r in regs_written)
+        v = sum(hw(uci.reg_read(r)) for r in regs_written)
 
         rbw.sca_address_trace.append(f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}")
         rbw.sca_values_trace.append(v)
@@ -57,7 +58,7 @@ def regs_hw_sum_trace(rbw, address: int, size: int, _data):
     rbw.reg_leak = rbw.disassemble_single_detailed(address, size)
 
 
-def regs_hd_sum_trace(rbw, address: int, size: int, _data):
+def regs_hd_sum_trace(uci: uc.Uc, address: int, size: int, rbw):
     """Trace written registers Hamming distance
 
     For each instruction, this tracer sums the Hamming distance of all written
@@ -78,8 +79,8 @@ def regs_hd_sum_trace(rbw, address: int, size: int, _data):
         for r in regs_written:
             if r in rbw.TRACE_DISCARD:
                 continue
-            v += rbw.RegistersBackup[r] ^ rbw.emu.reg_read(r)
-            rbw.RegistersBackup[r] = rbw.emu.reg_read(r)
+            v += hw(rbw.RegistersBackup[r] ^ uci.reg_read(r))
+            rbw.RegistersBackup[r] = uci.reg_read(r)
 
         rbw.sca_address_trace.append(f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}")
         rbw.sca_values_trace.append(v)
@@ -89,7 +90,7 @@ def regs_hd_sum_trace(rbw, address: int, size: int, _data):
     rbw.reg_leak = rbw.disassemble_single_detailed(address, size)
 
 
-def wb_regs_trace(rbw, address: int, size: int, _data):
+def wb_regs_trace(uci: uc.Uc, address: int, size: int, rbw):
     """Trace written registers value
 
     For each instruction, output one point per written register value.
@@ -107,7 +108,7 @@ def wb_regs_trace(rbw, address: int, size: int, _data):
                 continue
 
             rbw.sca_address_trace.append(ins)
-            rbw.sca_values_trace.append(rbw.emu.reg_read(r))
+            rbw.sca_values_trace.append(uci.reg_read(r))
 
     # Information is stored to be used at the next instruction,
     # once the unicorn engine actually performed the current instruction.

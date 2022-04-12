@@ -271,12 +271,12 @@ class rainbowBase:
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
             HookWeakMethod(self.block_handler))
         if self.sca_mode:
-            if (self.sca_HD):
+            if self.sca_HD:
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                    HookWeakMethod(self.sca_code_traceHD))
+                    regs_hd_sum_trace, self)
             else:
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                    HookWeakMethod(self.sca_code_trace))
+                    regs_hw_sum_trace, self)
             self.tm_hook = self.emu.hook_add(
                 uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
                 HookWeakMethod(self.sca_trace_mem))
@@ -362,12 +362,6 @@ class rainbowBase:
             .strip("\n")
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
-
-    def sca_code_trace(self, _uci, address, size, data):
-        regs_hw_sum_trace(self, address, size, data)
-
-    def sca_code_traceHD(self, uci, address, size, data):
-        regs_hd_sum_trace(self, address, size, data)
 
     def code_trace(self, uci, address, size, data):
         """ 
