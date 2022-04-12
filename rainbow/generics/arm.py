@@ -29,8 +29,8 @@ class rainbow_arm(rainbowBase):
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
     TRACE_DISCARD = []
 
-    def __init__(self, trace=True, sca_mode=False, local_vars={}):
-        super().__init__(trace, sca_mode)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM)
         self.disasm.detail = True
@@ -43,9 +43,8 @@ class rainbow_arm(rainbowBase):
         known_regs = [i[len('UC_ARM_REG_'):] for i in dir(uc.arm_const) if '_REG' in i]
         self.reg_map = {r.lower(): getattr(uc.arm_const, 'UC_ARM_REG_'+r) for r in known_regs}
 
-        self.stubbed_functions = local_vars
-        self.setup(sca_mode)
-    
+        self.setup()
+
         self.reset_stack()
 
     def reset_stack(self):

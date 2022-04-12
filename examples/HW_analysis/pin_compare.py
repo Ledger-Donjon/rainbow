@@ -58,7 +58,7 @@ if __name__ == "__main__":
     N = 500
 
     print("Setting up emulator")
-    e = rainbow_stm32(sca_mode=True, local_vars=globals())
+    e = rainbow_stm32(sca_mode=True)
     e.load("trezor.elf")
 
     print("Generating", N, "traces")

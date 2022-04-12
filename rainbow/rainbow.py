@@ -261,7 +261,7 @@ class rainbowBase:
             return True
         return False
 
-    def setup(self, sca_mode):
+    def setup(self):
         """ Sets up a stack and adds base hooks to the engine """
         ## Add a stack
         self.map_space(*self.STACK)
@@ -269,7 +269,7 @@ class rainbowBase:
         ## Add hooks
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
             HookWeakMethod(self.block_handler))
-        if sca_mode:
+        if self.sca_mode:
             if (self.sca_HD):
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
                     HookWeakMethod(self.sca_code_traceHD))
