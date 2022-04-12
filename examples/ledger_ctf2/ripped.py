@@ -23,7 +23,12 @@ def srand(em):
 
 # Set up a x64 emulator in side-channel mode (no text output) and
 # pass the previous functions to the redefined functions dictionary
-e = rainbow_x64(sca_mode=True, local_vars=globals())
+e = rainbow_x64(sca_mode=True)
+e.stubbed_functions = {
+    "time": time,
+    "clock_gettime": clock_gettime,
+    "srand": srand,
+}
 
 # load the elf
 e.load("ctf2", typ=".elf")

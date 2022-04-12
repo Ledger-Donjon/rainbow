@@ -29,7 +29,7 @@ class rainbow_aarch64(rainbowBase):
     INTERNAL_REGS = [f"x{i}" for i in range(30)]
     TRACE_DISCARD = []
 
-    def __init__(self, local_vars={}, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_ARM64, uc.UC_MODE_ARM)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM64, cs.CS_MODE_ARM)
@@ -43,7 +43,6 @@ class rainbow_aarch64(rainbowBase):
         known_regs = [i[len('UC_ARM64_REG_'):] for i in dir(uc.arm64_const) if '_REG' in i]
         self.reg_map = {r.lower(): getattr(uc.arm64_const, 'UC_ARM64_REG_'+r) for r in known_regs}
 
-        self.stubbed_functions = local_vars
         self.setup()
 
         self.reset_stack()
