@@ -89,18 +89,26 @@ def regs_hd_sum_trace(rbw, address: int, size: int, _data):
     rbw.reg_leak = rbw.disassemble_single_detailed(address, size)
 
 
-def wb_regs_trace(rbw, address, size, data):
-    """One point per register value, and filter out uninteresting register accesses"""
-    if rbw.reg_leak:
-      ins = rbw.reg_leak[0]
-      for reg in map(ins.reg_name, rbw.reg_leak[1]):
-          if reg not in rbw.TRACE_DISCARD:
+def wb_regs_trace(rbw, address: int, size: int, _data):
+    """Trace written registers value
+
+    For each instruction, output one point per written register value.
+
+    You may filter out uninteresting register accesses using TRACE_DISCARD
+    attribute.
+    """
+    ins = rbw.reg_leak
+    if ins is not None:
+        # Find out which registers are modified
+        _, regs_written = registers_accessed_by_instruction(ins)
+
+        for r in regs_written:
+            if r in rbw.TRACE_DISCARD:
+                continue
+
             rbw.sca_address_trace.append(ins)
-            rbw.sca_values_trace.append(rbw.emu.reg_read(rbw.reg_map[reg]))
+            rbw.sca_values_trace.append(rbw.emu.reg_read(r))
 
-    rbw.reg_leak = None
-
-    ins = rbw.disassemble_single_detailed(address, size)
-    _regs_read, regs_written = registers_accessed_by_instruction(ins)
-    if len(regs_written) > 0:
-        rbw.reg_leak = (ins, regs_written)
+    # Information is stored to be used at the next instruction,
+    # once the unicorn engine actually performed the current instruction.
+    rbw.reg_leak = rbw.disassemble_single_detailed(address, size)
