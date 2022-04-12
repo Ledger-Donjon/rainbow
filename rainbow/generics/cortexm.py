@@ -30,8 +30,8 @@ class rainbow_cortexm(rainbowBase):
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "cpsr", "pc", "lr"]
     TRACE_DISCARD = []
 
-    def __init__(self, trace=True, sca_mode=False, local_vars={}):
-        super().__init__(trace, sca_mode)
+    def __init__(self, local_vars={}, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_THUMB | uc.UC_MODE_MCLASS)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_THUMB | cs.CS_MODE_MCLASS)
         self.disasm.detail = True
@@ -45,7 +45,7 @@ class rainbow_cortexm(rainbowBase):
         self.reg_map = {r.lower(): getattr(uc.arm_const, 'UC_ARM_REG_'+r) for r in known_regs}
 
         self.stubbed_functions = local_vars
-        self.setup(sca_mode)
+        self.setup()
 
         self.reset_stack()
         # Force mapping of those addresses so that

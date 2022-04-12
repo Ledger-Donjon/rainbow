@@ -29,8 +29,8 @@ class rainbow_m68k(rainbowBase):
     INTERNAL_REGS = [f"d{i}" for i in range(8)] + [f"a{i}" for i in range(8)] + ["pc"]
     TRACE_DISCARD = []
 
-    def __init__(self, trace=True, sca_mode=False, local_vars={}):
-        super().__init__(trace, sca_mode)
+    def __init__(self, local_vars={}, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_M68K, uc.UC_MODE_BIG_ENDIAN)
         self.disasm = cs.Cs(cs.CS_ARCH_M68K, cs.CS_MODE_M68K_000)
         self.disasm.detail = True
@@ -44,7 +44,7 @@ class rainbow_m68k(rainbowBase):
         self.reg_map = {r.lower(): getattr(uc.m68k_const, 'UC_M68K_REG_'+r) for r in known_regs}
 
         self.stubbed_functions = local_vars
-        self.setup(sca_mode)
+        self.setup()
 
         self.reset_stack()
 

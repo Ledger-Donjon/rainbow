@@ -69,13 +69,13 @@ class rainbow_stm32f215(rainbow_stm32):
     INTERNAL = (0xE0000000, 0xFFFFFFFF)
     STACK_ADDR = RAM[1]
 
-    def __init__(self, trace=True, sca_mode=False, local_vars={}):
-        super().__init__(trace, sca_mode)
+    def __init__(self, local_vars={}, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.stubbed_functions = local_vars
 
-        self.setup_step(sca_mode)
+        self.setup_step()
 
-    def setup_step(self, sca_mode):
+    def setup_step(self):
         import pkg_resources
 
         ## Get register dictionary (dumped from .svd file)
@@ -93,8 +93,8 @@ class rainbow_stm32f215(rainbow_stm32):
 
 
 class rainbow_stm32l431(rainbow_stm32):
-    def __init__(self, trace=True, sca_mode=False, local_vars={}):
-        super().__init__(trace, sca_mode)
+    def __init__(self, local_vars={}, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         import pkg_resources
         regs_pickle = pkg_resources.resource_filename(
             __name__, "/stm32l4x1.pickle")
