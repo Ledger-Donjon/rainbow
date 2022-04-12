@@ -30,7 +30,7 @@ from pygments.lexers import NasmLexer
 
 from .color_functions import color
 from .loaders import load_selector
-from .tracers import regs_hw_sum_trace
+from .tracers import regs_hd_sum_trace, regs_hw_sum_trace
 
 
 class HookWeakMethod:
@@ -367,27 +367,7 @@ class rainbowBase:
         regs_hw_sum_trace(self, address, size, data)
 
     def sca_code_traceHD(self, uci, address, size, data):
-        """
-        Hook that traces modified register values in side-channel mode.
-
-        Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction.
-        Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction.
-        """
-        if self.trace:
-            if self.reg_leak is not None:
-                for x in self.reg_leak[1]:
-                    if x not in self.TRACE_DISCARD:
-                        self.sca_address_trace.append(self.reg_leak[0])
-                        self.sca_values_trace.append(self.RegistersBackup[self.reg_map[x]] ^ uci.reg_read(self.reg_map[x]))
-                        self.RegistersBackup[self.reg_map[x]] = uci.reg_read(self.reg_map[x])
-
-            self.reg_leak = None
-
-            ins = self.disassemble_single_detailed(address, size)
-            _regs_read, regs_written = ins.regs_access()
-            if len(regs_written) > 0:
-                self.reg_leak = (f"{address:8X} {ins.mnemonic:<6}  {ins.op_str}",list(map(ins.reg_name, regs_written))
-                )
+        regs_hd_sum_trace(self, address, size, data)
 
     def code_trace(self, uci, address, size, data):
         """ 

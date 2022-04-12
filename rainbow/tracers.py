@@ -45,12 +45,47 @@ def regs_hw_sum_trace(rbw, address: int, size: int, _data):
     """
     ins = rbw.reg_leak
     if ins is not None:
+        # Find out which registers are modified
         _, regs_written = registers_accessed_by_instruction(ins)
         v = sum(hw(rbw.emu.reg_read(r)) for r in regs_written)
 
         rbw.sca_address_trace.append(f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}")
         rbw.sca_values_trace.append(v)
 
+    # Information is stored to be used at the next instruction,
+    # once the unicorn engine actually performed the current instruction.
+    rbw.reg_leak = rbw.disassemble_single_detailed(address, size)
+
+
+def regs_hd_sum_trace(rbw, address: int, size: int, _data):
+    """Trace written registers Hamming distance
+
+    For each instruction, this tracer sums the Hamming distance of all written
+    registers with their last value.
+
+    You may filter out uninteresting register accesses using TRACE_DISCARD
+    attribute.
+
+    This tracer is hooked by default if sca_mode=True and sca_HD=True.
+    You may hook it with Unicorn as an `uc.UC_HOOK_CODE` hook.
+    """
+    ins = rbw.reg_leak
+    if ins is not None:
+        # Find out which registers are modified
+        _, regs_written = registers_accessed_by_instruction(ins)
+
+        v = 0
+        for r in regs_written:
+            if r in rbw.TRACE_DISCARD:
+                continue
+            v += rbw.RegistersBackup[r] ^ rbw.emu.reg_read(r)
+            rbw.RegistersBackup[r] = rbw.emu.reg_read(r)
+
+        rbw.sca_address_trace.append(f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}")
+        rbw.sca_values_trace.append(v)
+
+    # Information is stored to be used at the next instruction,
+    # once the unicorn engine actually performed the current instruction.
     rbw.reg_leak = rbw.disassemble_single_detailed(address, size)
 
 
