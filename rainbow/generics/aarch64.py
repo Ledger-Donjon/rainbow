@@ -50,9 +50,6 @@ class rainbow_aarch64(rainbowBase):
     def reset_stack(self):
         self.emu.reg_write(uc.arm64_const.UC_ARM64_REG_SP, self.STACK_ADDR)
 
-    def start(self, *args, **kwargs):
-        return self._start(*args, **kwargs)
-
     def return_force(self):
         self["pc"] = self["lr"]
 

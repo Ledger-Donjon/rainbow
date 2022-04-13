@@ -74,7 +74,7 @@ class rainbow_cortexm(rainbowBase):
         return False 
 
     def start(self, begin, *args, **kwargs):
-        return self._start(begin | 1, *args, **kwargs)
+        return super().start(begin | 1, *args, **kwargs)
 
     def return_force(self):
         self["pc"] = self["lr"]

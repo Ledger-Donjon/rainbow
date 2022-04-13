@@ -246,7 +246,7 @@ class rainbowBase:
         """ Load a file into the emulator's memory """
         return load_selector(filename, self, typ, verbose=verbose)
 
-    def _start(self, begin, end, timeout=0, count=0, verbose=True):
+    def start(self, begin, end, timeout=0, count=0, verbose=True):
         """ Begin emulation """
         try:
             # Copy the original registers into the backup before starting the process
