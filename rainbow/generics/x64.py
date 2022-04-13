@@ -54,8 +54,8 @@ class rainbow_x64(rainbowBase):
         self.emu.reg_write(uc.x86_const.UC_X86_REG_RBP, self.STACK_ADDR)
         self.emu.reg_write(uc.x86_const.UC_X86_REG_RSP, self.STACK_ADDR)
 
-    def start(self, begin, end, timeout=0, count=0):
-        return self._start(begin, end, timeout, count)
+    def start(self, *args, **kwargs):
+        return self._start(*args, **kwargs)
 
     def return_force(self):
         ret = self[self["rsp"]]
