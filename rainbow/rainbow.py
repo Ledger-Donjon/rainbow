@@ -17,19 +17,20 @@
 # Copyright 2019 Victor Servant, Ledger SAS
 
 
+import functools
 import math
-import os
 import weakref
+from typing import Callable, Tuple
 import capstone as cs
 import colorama
-import lief
 import unicorn as uc
 from pygments import highlight
 from pygments.formatters import TerminalFormatter as formatter
 from pygments.lexers import NasmLexer
 
-from rainbow.color_functions import color
-from rainbow.loaders import load_selector
+from .color_functions import color
+from .loaders import load_selector
+from .tracers import regs_hd_sum_trace, regs_hw_sum_trace
 
 
 class HookWeakMethod:
@@ -270,12 +271,12 @@ class rainbowBase:
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
             HookWeakMethod(self.block_handler))
         if self.sca_mode:
-            if (self.sca_HD):
+            if self.sca_HD:
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                    HookWeakMethod(self.sca_code_traceHD))
+                    regs_hd_sum_trace, self)
             else:
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                    HookWeakMethod(self.sca_code_trace))
+                    regs_hw_sum_trace, self)
             self.tm_hook = self.emu.hook_add(
                 uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
                 HookWeakMethod(self.sca_trace_mem))
@@ -330,15 +331,28 @@ class rainbowBase:
                 val = color("CYAN", f"{val:8x}")
                 print(f"  {val} <- [{addr}]", end=" ")
 
-    def disassemble_single(self, addr, size):
-        """ Disassemble a single instruction at address """
-        instruction = self.emu.mem_read(addr, size)
-        return next(self.disasm.disasm_lite(bytes(instruction), addr, 1))
+    # Least-recently used cache for Capstone calls to disasm or disasm_lite
+    @staticmethod
+    @functools.lru_cache(maxsize=4096)
+    def _disassemble_cache(call: Callable, instruction: bytes, addr: int):
+        return next(call(instruction, addr, 1))
 
-    def disassemble_single_detailed(self, addr, size):
-        """ Disassemble a single instruction at addr """
-        instruction = self.emu.mem_read(addr, 2 * size)
-        return next(self.disasm.disasm(bytes(instruction), addr, 1))
+    def disassemble_single(self, addr: int, size: int) -> Tuple[int, int, str, str]:
+        """Disassemble a single instruction using Capstone lite
+
+        This returns the address, size, mnemonic, and operands of the
+        instruction at the specified address and size (in bytes).
+
+        If you want more information, you should use disassemble_single_detailed
+        method, but is 30% slower according to Capstone documentation.
+        """
+        insn = self.emu.mem_read(addr, size)
+        return self._disassemble_cache(self.disasm.disasm_lite, bytes(insn), addr)
+
+    def disassemble_single_detailed(self, addr: int, size: int) -> cs.CsInsn:
+        """Disassemble a single instruction using Capstone"""
+        insn = self.emu.mem_read(addr, 2 * size)
+        return self._disassemble_cache(self.disasm.disasm, bytes(insn), addr)
 
     def print_asmline(self, adr, ins, op_str):
         """ Pretty-print assembly using pygments syntax highlighting """
@@ -348,33 +362,6 @@ class rainbowBase:
             .strip("\n")
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
-
-    def sca_code_trace(self, uci, address, size, data):
-        from .tracers import regs_hw_sum_trace
-        regs_hw_sum_trace(self, address, size, data)
-          
-    def sca_code_traceHD(self, uci, address, size, data):
-        """
-        Hook that traces modified register values in side-channel mode.
-
-        Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction.
-        Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction.
-        """
-        if self.trace:
-            if self.reg_leak is not None:
-                for x in self.reg_leak[1]:
-                    if x not in self.TRACE_DISCARD:
-                        self.sca_address_trace.append(self.reg_leak[0])
-                        self.sca_values_trace.append(self.RegistersBackup[self.reg_map[x]] ^ uci.reg_read(self.reg_map[x]))
-                        self.RegistersBackup[self.reg_map[x]] = uci.reg_read(self.reg_map[x])
-
-            self.reg_leak = None
-
-            ins = self.disassemble_single_detailed(address, size)
-            _regs_read, regs_written = ins.regs_access()
-            if len(regs_written) > 0:
-                self.reg_leak = (f"{address:8X} {ins.mnemonic:<6}  {ins.op_str}",list(map(ins.reg_name, regs_written))
-                )
 
     def code_trace(self, uci, address, size, data):
         """ 
@@ -391,7 +378,7 @@ class rainbowBase:
             while True:
                 s = input("Press Enter to continue, or Input an address and a size to display an address: ")
 
-                if s is '':
+                if s == '':
                     break
                 try:
                     address = eval("0x"+s.split(" ")[0])
