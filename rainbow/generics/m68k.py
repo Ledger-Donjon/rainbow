@@ -50,9 +50,6 @@ class rainbow_m68k(rainbowBase):
     def reset_stack(self):
         self.emu.reg_write(uc.m68k_const.UC_M68K_REG_A7, self.STACK_ADDR)
 
-    def start(self, begin, end, timeout=0, count=0):
-        return self._start(begin, end, timeout, count)
-
     def return_force(self):
         ret = self[self["a7"]]
         self["a7"] += self.word_size

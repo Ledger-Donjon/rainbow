@@ -73,8 +73,8 @@ class rainbow_cortexm(rainbowBase):
         self['pc'] = self.functions["SVC_Handler"] | 1
         return False 
 
-    def start(self, begin, end, timeout=0, count=0):
-        return self._start(begin | 1, end, timeout, count)
+    def start(self, begin, *args, **kwargs):
+        return super().start(begin | 1, *args, **kwargs)
 
     def return_force(self):
         self["pc"] = self["lr"]
