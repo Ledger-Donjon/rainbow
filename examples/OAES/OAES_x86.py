@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from rainbow.generics import rainbow_x86, rainbow_arm
+from binascii import unhexlify
+
 import numpy as np
-from binascii import unhexlify, hexlify
+from rainbow.generics import rainbow_x86
 
 
 def generate_targetf():
@@ -65,7 +66,7 @@ if __name__ == "__main__":
     _, func = generate_targetf()
     values, traces, addresses = get_traces(func, 10, 1000000)
 
-    from lascar import TraceBatchContainer, Session
+    from lascar import Session, TraceBatchContainer
 
     t = TraceBatchContainer(traces, values)
     s = Session(t)

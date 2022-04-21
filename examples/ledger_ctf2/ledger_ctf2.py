@@ -2,12 +2,15 @@
 # This example retrieves the key from the AES in https://github.com/LedgerHQ/CTF/tree/master/ctf2018/CTF2
 
 from binascii import unhexlify
-from ripped2 import main_func
 from random import choice
 
-import numpy as np
 import lascar
+import numpy as np
 from lascar.tools.aes import sbox
+from visplot import plot
+
+from ripped2 import main_func
+
 
 class LedgerCtf2Container(lascar.AbstractContainer):
 
@@ -42,5 +45,6 @@ for i, engine in enumerate(cpa_engines):
     )
 
 # Let's draw one result
-from rainbow.utils import plot
-plot( cpa_engines[3]._finalize(), highlight=K[3])
+v = plot(cpa_engines[3].finalize(), dontrun=True)
+v.multiple_select(K[3])
+v.run()

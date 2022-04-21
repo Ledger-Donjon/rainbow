@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from rainbow.generics import rainbow_x64
-from binascii import unhexlify
 
 # change this value to switch between normal 
 # execution, and side-channel analysis version
@@ -77,9 +76,9 @@ for i in range(0, 16*15,16):
 
 if e.sca_mode:
   import numpy as np
-  from rainbow.utils import plot, hw
+  from visplot import plot
 
   print(len(e.sca_values_trace))
 
-  trace = (np.array(e.sca_values_trace) & 0xffffffff).astype(np.uint32)
+  trace = (np.array(e.sca_values_trace, dtype=np.uint32) & 0xffffffff)
   plot(trace)

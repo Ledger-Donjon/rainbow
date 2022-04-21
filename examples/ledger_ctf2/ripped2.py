@@ -52,6 +52,5 @@ def main_func(inputt):
 if __name__ == "__main__":
     addr, trace = main_func("00112233445566778899aabbccddeeff")
 
-    from rainbow.utils import plot
+    from visplot import plot
     plot(trace)
-
