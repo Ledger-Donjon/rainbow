@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -16,17 +16,21 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
-from rainbow.utils.plot.interface import Interface
+from typing import List
+
+from PyQt5 import QtWidgets as qt
+
+from .interface import Interface
 
 
-def viewer(disassembly, traces, highlight=None):
-    """ A Viewer that synchronizes a view of an instruction trace with a view of side-channel traces. Clicking an instruction zooms on the corresponding point in the side-channel traces, and conversely. """
+def viewer(instructions: List[str], *args, **kwargs) -> int:
+    """Visplot with instructions list
 
-    from PyQt5 import QtWidgets as qt
+    Build a Qt application showing the instructions list next to visplot.
+    Clicking an instruction zooms on the corresponding point in the side-channel
+    traces, and conversely.
+    """
+    app = qt.QApplication([])
 
-    app_ = qt.QApplication([])
-
-    gui = Interface(disassembly, traces, highlight)
-    gui.show()
-
-    return app_.exec_()
+    _gui = Interface(instructions, *args, **kwargs)
+    return app.exec_()
