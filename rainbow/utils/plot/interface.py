@@ -17,13 +17,22 @@
 # Copyright 2019 Victor Servant, Ledger SAS
 
 from typing import List
+
 from PyQt5 import QtWidgets as qt
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import QApplication, QShortcut
 from visplot import plot
 
 
 class Interface(qt.QMainWindow):
     def __init__(self, instructions: List[str], *args, **kwargs):
         super().__init__()
+
+        # Exit shortcuts
+        self.quit_sc = QShortcut(QKeySequence("Q"), self)
+        self.quit_sc.activated.connect(QApplication.instance().quit)
+        self.esc_sc = QShortcut(QKeySequence("ESC"), self)
+        self.esc_sc.activated.connect(QApplication.instance().quit)
 
         # Visplot widget
         self.plot_ = plot(*args, **kwargs, parent=self)
