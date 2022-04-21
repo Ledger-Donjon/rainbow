@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # aes128 from https://github.com/Ko-/aes-armcortexm
 
 import numpy as np

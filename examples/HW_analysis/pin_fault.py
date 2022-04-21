@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from rainbow.devices.stm32 import rainbow_stm32f215 as rainbow_stm32
 
 # Pick any reference pin (STORED_PIN) and a different input pin

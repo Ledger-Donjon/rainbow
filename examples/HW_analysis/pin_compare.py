@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from rainbow.devices.stm32 import rainbow_stm32f215 as rainbow_stm32
 
 def comparePin(e, pin_attempt, stored_pin, leakage='register'):

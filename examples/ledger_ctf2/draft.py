@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from rainbow.generics import rainbow_x64
 from binascii import unhexlify
 

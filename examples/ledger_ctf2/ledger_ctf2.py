@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # This example retrieves the key from the AES in https://github.com/LedgerHQ/CTF/tree/master/ctf2018/CTF2
 
 from binascii import unhexlify

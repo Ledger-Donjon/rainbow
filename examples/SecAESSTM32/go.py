@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # UINT aes(UCHAR Mode, STRUCT_AES* struct_aes, const UCHARp key, const UCHARp input, UCHARp output, const UCHARp random_aes, const UCHARp random_key)
 # aes( 0xb, ...)
 

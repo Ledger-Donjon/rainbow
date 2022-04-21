@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Hack.lu ctf 2009
 from rainbow.generics import rainbow_x86
 from binascii import unhexlify, hexlify

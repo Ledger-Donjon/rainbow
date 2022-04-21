@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # This example is 'Pimp my xor' from GreHack 2018
 # Just as a debug trace example
 # Download the file from https://github.com/GreHack/CTF-challs/tree/master/2018/Reverse/100%20-%20pimp_my_xor

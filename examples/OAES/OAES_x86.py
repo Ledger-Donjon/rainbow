@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from rainbow.generics import rainbow_x86, rainbow_arm
 import numpy as np
 from binascii import unhexlify, hexlify

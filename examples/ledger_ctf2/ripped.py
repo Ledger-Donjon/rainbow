@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # This file contains the ripped_out parts of the binary
 # that we'd like to emulate and trace
 
