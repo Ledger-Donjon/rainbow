@@ -19,7 +19,7 @@
 from typing import List
 
 from PyQt5 import QtWidgets as qt
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QColor, QKeySequence, QPalette
 from PyQt5.QtWidgets import QApplication, QShortcut
 from visplot import plot
 
@@ -78,3 +78,21 @@ class Interface(qt.QMainWindow):
         tr = self.plot_.canvas.scene.node_transform(self.plot_.view.scene)
         x, *_ = tr.map(event.pos)
         self.instr_list.setCurrentRow(int(x))
+
+
+def setup_qt() -> qt.QApplication:
+    """Setup Qt application with dark theme."""
+    app = qt.QApplication([])
+
+    # Dark theme
+    app.setStyle(qt.QStyleFactory.create('Fusion'))
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(25, 25, 25))
+    palette.setColor(QPalette.WindowText, QColor(240, 240, 240))
+    palette.setColor(QPalette.Base, QColor(40, 40, 40))
+    palette.setColor(QPalette.Text, QColor(200, 200, 200))
+    palette.setColor(QPalette.Button, QColor(40, 40, 40))
+    palette.setColor(QPalette.ButtonText, QColor(200, 200, 200))
+    app.setPalette(palette)
+
+    return app

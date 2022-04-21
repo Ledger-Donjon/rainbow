@@ -18,10 +18,7 @@
 
 from typing import List
 
-from PyQt5 import QtWidgets as qt
-from PyQt5 import QtGui as qtg
-
-from .interface import Interface
+from .interface import Interface, setup_qt
 
 
 def viewer(instructions: List[str], *args, **kwargs) -> int:
@@ -31,18 +28,6 @@ def viewer(instructions: List[str], *args, **kwargs) -> int:
     Clicking an instruction zooms on the corresponding point in the side-channel
     traces, and conversely.
     """
-    app = qt.QApplication([])
-
-    # Dark theme
-    app.setStyle(qt.QStyleFactory.create('Fusion'))
-    palette = qtg.QPalette()
-    palette.setColor(qtg.QPalette.Window, qtg.QColor(25, 25, 25))
-    palette.setColor(qtg.QPalette.WindowText, qtg.QColor(240, 240, 240))
-    palette.setColor(qtg.QPalette.Base, qtg.QColor(40, 40, 40))
-    palette.setColor(qtg.QPalette.Text, qtg.QColor(200, 200, 200))
-    palette.setColor(qtg.QPalette.Button, qtg.QColor(40, 40, 40))
-    palette.setColor(qtg.QPalette.ButtonText, qtg.QColor(200, 200, 200))
-    app.setPalette(palette)
-
+    app = setup_qt()
     _gui = Interface(instructions, *args, **kwargs)
     return app.exec_()
