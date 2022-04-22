@@ -19,7 +19,7 @@
 from typing import List
 
 from PyQt5 import QtWidgets as qt
-from PyQt5.QtGui import QColor, QKeySequence, QPalette
+from PyQt5.QtGui import QColor, QFont, QKeySequence, QPalette
 from PyQt5.QtWidgets import QApplication, QShortcut
 from visplot import plot
 
@@ -43,6 +43,7 @@ class Interface(qt.QMainWindow):
         self.instr_list = qt.QListWidget(self)
         self.instr_list.currentRowChanged.connect(self.on_instr_list_row_change)
         self.instr_list.addItems(instructions)
+        self.instr_list.setFont(QFont("Monospace"))
 
         self.place_widgets()
         self.showMaximized()
