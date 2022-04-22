@@ -65,14 +65,17 @@ class Interface(qt.QMainWindow):
     def place_widgets(self):
         """Build window structure
 
-        QMainWindow > QFrame > QHBoxLayout > {self.instr_list, self.plot_}
+        QMainWindow > QFrame > QHBoxLayout > Splitter > {instr_list, plot_}
         """
         self.frame = qt.QFrame(self)
         self.setCentralWidget(self.frame)
 
+        # Horizontal layout with splitter
         self.frame_layout = qt.QHBoxLayout(self.frame)
-        self.frame_layout.addWidget(self.instr_list)
-        self.frame_layout.addWidget(self.plot_.canvas.native)
+        self.splitter = qt.QSplitter(self)
+        self.splitter.addWidget(self.instr_list)
+        self.splitter.addWidget(self.plot_.canvas.native)
+        self.frame_layout.addWidget(self.splitter)
 
     def on_mouse_double_click(self, event):
         """Event called on double click in plot"""
