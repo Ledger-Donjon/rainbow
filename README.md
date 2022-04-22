@@ -29,7 +29,7 @@ If you wish to use another version of Python, you can drop an issue and will loo
 Some examples will use Lascar's side-channel attacks and try to display traces using a custom plotter built on top of [Vispy](https://github.com/vispy/vispy). If you want to run those, you will need Vispy and `pyqt5` for the instruction trace + execution trace viewer.
 
 In the `./examples/` folder, you will find:
-- [x64_pimpmyxor.py](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/x64_pimpmyxor.py) : basic emulation of [this challenge](https://github.com/GreHack/CTF-challs/tree/master/2018/Reverse/100%20-%20pimp_my_xor)
+- [x64_pimpmyxor.py](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/pimp_my_xor/x64_pimpmyxor.py) : basic emulation of [this challenge](https://github.com/GreHack/CTF-challs/tree/master/2018/Reverse/100%20-%20pimp_my_xor)
 - [CortexM_AES](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/CortexM_AES/cortexm_aes.py) : a simple ARM Thumb AES
 - [Hacklu2009](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/hacklu2009/go.py)  : a side-channel solution of a whitebox challenge
 - HW_analysis : a side-channel simulation of a [pin comparison](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/HW_analysis/pin_compare.py), and a [fault injection](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/HW_analysis/pin_fault.py) simulation
