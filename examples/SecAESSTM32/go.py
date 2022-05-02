@@ -1,9 +1,13 @@
+#!/usr/bin/env python3
+
 # UINT aes(UCHAR Mode, STRUCT_AES* struct_aes, const UCHARp key, const UCHARp input, UCHARp output, const UCHARp random_aes, const UCHARp random_key)
 # aes( 0xb, ...)
 
-from rainbow.generics import rainbow_arm
 from binascii import hexlify
+
 from Crypto.Cipher import AES
+from rainbow.generics import rainbow_arm
+
 
 def f_aes(e, key, input_):
     e.reset()
@@ -59,9 +63,11 @@ if __name__ == "__main__":
     e[return_addr] = 0
 
     if e.sca_mode:
-        from random import getrandbits 
-        from rainbow.utils import hw, plot
+        from random import getrandbits
+
         import numpy as np
+        from rainbow.utils import hw
+        from visplot import plot
 
         key = b"\x7a"*16
         traces = []
@@ -74,4 +80,6 @@ if __name__ == "__main__":
         traces = np.array(traces) 
         traces += np.random.normal(0,1,size=traces.shape)
 
-        plot(traces, highlight=0)
+        v = plot(traces, dontrun=True)
+        v.multiple_select(0)
+        v.run()

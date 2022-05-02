@@ -16,78 +16,97 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
-from PyQt5 import QtWidgets as qt
-from vispy import scene, color
-from .plot import plot
+from typing import List
 
-import pkg_resources
+from PyQt5 import QtWidgets as qt
+from PyQt5.QtGui import QColor, QFont, QKeySequence, QPalette
+from PyQt5.QtWidgets import QApplication, QShortcut
+from visplot import plot
 
 
 class Interface(qt.QMainWindow):
-    def __init__(self, instr, etraces, highlight=None):
+    def __init__(self, instructions: List[str], *args, **kwargs):
         super().__init__()
-        style_file = pkg_resources.resource_filename(__name__, "/styles.css")
-        with open(style_file) as stylesheet:
-            self.setStyleSheet(stylesheet.read())
-        self.etraces = etraces
-        self.instr = instr
-        self.index = 0
-        self.lim = len(instr)
-        self.zone = None
-        self.highlight = highlight
-        self.color_map = color.get_colormap("viridis")
-        self.add_widgets()
-        self.place_widgets()
 
-    def add_widgets(self):
-        self.plot_ = plot(self.etraces, highlight=self.highlight, parent=self)
+        # Exit shortcuts
+        self.quit_sc = QShortcut(QKeySequence("Q"), self)
+        self.quit_sc.activated.connect(QApplication.instance().quit)
+        self.esc_sc = QShortcut(QKeySequence("ESC"), self)
+        self.esc_sc.activated.connect(QApplication.instance().quit)
+
+        # Visplot widget
+        self.plot_ = plot(*args, **kwargs, parent=self)
+        self.plot_.canvas.connect(self.on_mouse_double_click)
+        self.instr_ruler = None  # vertical ruler on selected instruction
+
+        # Instructions list widget
         self.instr_list = qt.QListWidget(self)
-        self.instr_list.itemClicked.connect(self.instr_change_focus)
-        self.instr_list.currentRowChanged.connect(self.rowchange)
-        self.instr_list.addItems(self.instr)
+        self.instr_list.currentRowChanged.connect(self.on_instr_list_row_change)
+        self.instr_list.addItems(instructions)
+        self.instr_list.setFont(QFont("Monospace"))
 
-    def rowchange(self, event):
-        self.instr_change_focus(self.instr_list.currentItem())
+        self.place_widgets()
+        self.showMaximized()
 
-    def instr_change_focus(self, item):
-        self.index = self.instr_list.row(item)
-        self.focus_change(self.index)
+    def instr_list_set_font_style(self, row, bg_color=None, *args, **kwargs):
+        """Change row style in instructions listing
 
-    def focus_change(self, r):
-        if self.zone is not None:
-            self.zone.parent = None
-            self.zone = None
-        coords = [
-            (r - 0.2, self.etraces.max() + 1),
-            (r - 0.2, self.etraces.min() - 1),
-            (r + 0.2, self.etraces.min() - 1),
-            (r + 0.2, self.etraces.max() + 1),
-        ]
-        self.zone = scene.visuals.Polygon(
-            coords, color=color.Color("#ccc", alpha=0.7), parent=self.plot_.view.scene
-        )
-        y_range = self.etraces.max()-self.etraces.min()
-        y_fct = 3
-        y_padding = y_range/y_fct
-        self.plot_.view.camera.set_range(
-            x=(r - 5, r + 5), y=(self.etraces.min()-y_padding, self.etraces.max()+y_padding), z=(0, 0)
-        )
+        >>> self.instr_list_set_font_style(2, weight=75, italic=False)
+        >>> self.instr_list_set_font_style(2, bg_color=(25, 25, 25)))
+        """
+        self.instr_list.item(row).setFont(QFont("Monospace", *args, **kwargs))
+        if bg_color is not None:
+            self.instr_list.item(row).setBackground(QColor(*bg_color))
+
+    def on_instr_list_row_change(self, _event):
+        """Event called when instructions list selection changes"""
+        item = self.instr_list.currentItem()
+        index = self.instr_list.row(item)
+        self.focus_change(index)
+
+    def focus_change(self, x: int):
+        """Place vertical ruler on focused instruction"""
+        # Delete previous ruler if exists
+        if self.instr_ruler is not None:
+            self.instr_ruler.parent = None
+
+        self.instr_ruler = self.plot_.add_vertical_ruler(x)
 
     def place_widgets(self):
+        """Build window structure
+
+        QMainWindow > QFrame > QHBoxLayout > Splitter > {instr_list, plot_}
+        """
         self.frame = qt.QFrame(self)
         self.setCentralWidget(self.frame)
 
+        # Horizontal layout with splitter
         self.frame_layout = qt.QHBoxLayout(self.frame)
-
-        self.plot_.canvas.connect(self.on_mouse_double_click)
-
-        self.frame_layout.addWidget(self.instr_list)
-        self.frame_layout.addWidget(self.plot_.canvas.native)
-
-        self.showMaximized()
+        self.splitter = qt.QSplitter(self)
+        self.splitter.addWidget(self.instr_list)
+        self.splitter.addWidget(self.plot_.canvas.native)
+        self.frame_layout.addWidget(self.splitter)
 
     def on_mouse_double_click(self, event):
-        t = int(self.plot_.view.scene.transform.imap(event.pos)[0])
+        """Event called on double click in plot"""
+        tr = self.plot_.canvas.scene.node_transform(self.plot_.view.scene)
+        x, *_ = tr.map(event.pos)
+        self.instr_list.setCurrentRow(int(x))
 
-        self.instr_list.setCurrentRow(t)
-        self.focus_change(t)
+
+def setup_qt() -> qt.QApplication:
+    """Setup Qt application with dark theme."""
+    app = qt.QApplication([])
+
+    # Dark theme
+    app.setStyle(qt.QStyleFactory.create('Fusion'))
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(25, 25, 25))
+    palette.setColor(QPalette.WindowText, QColor(240, 240, 240))
+    palette.setColor(QPalette.Base, QColor(40, 40, 40))
+    palette.setColor(QPalette.Text, QColor(200, 200, 200))
+    palette.setColor(QPalette.Button, QColor(40, 40, 40))
+    palette.setColor(QPalette.ButtonText, QColor(200, 200, 200))
+    app.setPalette(palette)
+
+    return app

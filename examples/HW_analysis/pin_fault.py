@@ -1,4 +1,8 @@
+#!/usr/bin/env python3
+
+import numpy as np
 from rainbow.devices.stm32 import rainbow_stm32f215 as rainbow_stm32
+from rainbow.utils.plot import viewer
 
 # Pick any reference pin (STORED_PIN) and a different input pin
 # Goal is to make 'storage_containsPin' function return a non-null
@@ -79,13 +83,10 @@ e['lr'] = 0xaaaaaaaa
 e.start(e.functions['storage_containsPin'], 0xaaaaaaaa)
 
 # list(map(print, e.sca_address_trace))
-import numpy as np
 
 trace = np.array(e.sca_values_trace, dtype=np.uint8)
 fault_trace = trace.max() - np.array(fault_trace, dtype=np.uint8)[:trace.shape[0]] * trace.max() 
 # crash_trace = -trace.max() + np.array(crash_trace, dtype=np.uint8)[:trace.shape[0]] * trace.max()
 
-from rainbow.utils.plot import viewer 
-
-# viewer(e.sca_address_trace, np.array([trace, fault_trace, crash_trace]))  
-viewer(e.sca_address_trace, np.array([trace, fault_trace]), highlight=1)  
+# viewer(e.sca_address_trace, np.array([trace, fault_trace, crash_trace]))
+viewer(e.sca_address_trace, np.array([trace, fault_trace]), highlight=1)

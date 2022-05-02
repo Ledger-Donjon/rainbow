@@ -1,12 +1,14 @@
+#!/usr/bin/env python3
 # aes128 from https://github.com/Ko-/aes-armcortexm
 
-import numpy as np
-from binascii import unhexlify, hexlify
-from rainbow.generics import rainbow_arm
-from rainbow.utils import hw, plot
+from binascii import hexlify
 
 import lascar
+import numpy as np
 from lascar.tools.aes import sbox
+from rainbow.generics import rainbow_arm
+from rainbow.utils import hw
+from visplot import plot
 
 
 def aes_encrypt(key, plaintext):
@@ -67,4 +69,7 @@ s = lascar.Session(CortexMAesContainer(N), engines=cpa_engines, name="lascar CPA
 key = bytes([  engine.finalize().max(1).argmax() for engine in cpa_engines])
 print("Key is :", hexlify(key).upper())
 
-plot(cpa_engines[1].finalize(), highlight=KEY[1])
+# Let's draw one result
+v = plot(cpa_engines[1].finalize(), dontrun=True)
+v.multiple_select(KEY[1])
+v.run()
