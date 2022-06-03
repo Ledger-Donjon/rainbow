@@ -114,7 +114,7 @@ class rainbowBase:
 
     def map_space(self, start, end, verbose=False):
         """
-        Maps area into the unicorn emulator between a and b, or nothing if it was already mapped.
+        Maps area into the unicorn emulator between start and end, or nothing if it was already mapped.
         Only completes missing portions if there is overlapping with a previously-mapped segment
 
         The region is defined by `[start, end]`, so the region size is `end - start + 1`.
@@ -148,7 +148,7 @@ class rainbowBase:
                 (((end + 1) >> self.page_shift) << self.page_shift) + self.page_size - 1
             )
 
-        # List of overlaping or adjacent regions which must be merged.
+        # List of overlapping or adjacent regions which must be merged.
         overlaps: list[Tuple[int, bytes]] = []
         for r_start, r_end, _ in regions:
             # Region [start, end] is augmented for intersection test to detect adjacency.
