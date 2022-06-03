@@ -82,11 +82,7 @@ e['lr'] = 0xaaaaaaaa
 
 e.start(e.functions['storage_containsPin'], 0xaaaaaaaa)
 
-# list(map(print, e.sca_address_trace))
-
 trace = np.array(e.sca_values_trace, dtype=np.uint8)
 fault_trace = trace.max() - np.array(fault_trace, dtype=np.uint8)[:trace.shape[0]] * trace.max() 
-# crash_trace = -trace.max() + np.array(crash_trace, dtype=np.uint8)[:trace.shape[0]] * trace.max()
 
-# viewer(e.sca_address_trace, np.array([trace, fault_trace, crash_trace]))
-viewer(e.sca_address_trace, np.array([trace, fault_trace]), highlight=1)
+viewer(e.sca_address_trace, np.array([trace, fault_trace]))
