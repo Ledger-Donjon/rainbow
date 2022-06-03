@@ -139,8 +139,7 @@ class rainbowBase:
             return
 
         # Floor align start address
-        if start & (self.page_size - 1):
-            start = (start >> self.page_shift) << self.page_shift
+        start = (start >> self.page_shift) << self.page_shift
 
         # Ceil align end address
         if (end + 1) & (self.page_size - 1):
