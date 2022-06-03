@@ -100,84 +100,78 @@ class rainbowBase:
         self.sca_address_trace = []
         self.sca_values_trace = []
 
-    # convenience function
-    def map_space(self, a_, b_, verbose=False):
-        """ Maps area into the unicorn emulator between a and b, or nothing if it was already mapped.
-        Only completes missing portions if there is overlapping with a previously-mapped segment """
+    def __region_intersects(self, ra: Tuple[int, int], rb: Tuple[int, int]) -> bool:
+        """
+        :return: True if two given regions have non empty intersection.
+
+        :param ra: First region bounds, both start and end included.
+        :param rb: Second region bounds, both start and end included.
+        """
+        assert (ra[1] >= ra[0]) and (rb[1] >= rb[0])
+        u = max(ra[0], rb[0])
+        v = min(ra[1], rb[1])
+        return v >= u
+
+    def map_space(self, start, end, verbose=False):
+        """
+        Maps area into the unicorn emulator between a and b, or nothing if it was already mapped.
+        Only completes missing portions if there is overlapping with a previously-mapped segment
+
+        The region is defined by `[start, end]`, so the region size is `end - start + 1`.
+
+        :param start: Region start address, included.
+        :param end: Region end address, included.
+        """
+        if end < start:
+            raise ValueError("Invalid region")
+
         regions = list(self.emu.mem_regions())
-        if any(map(lambda x: a_ >= x[0] and b_ <= x[1], regions)):
+
+        # Return if already mapped
+        if any(map(lambda x: start >= x[0] and end <= x[1], regions)):
             if verbose:
-                print(f"[*] Did not map 0x{a_:X},0x{b_-a_:X} as it is already mapped")
+                print(
+                    f"[*] Did not map 0x{start:X},0x{end-start+1:X} as it is already mapped"
+                )
             return
 
-        if a_ == b_:
+        if start == end:
             return
 
-        ## Align start and end addresses
-        a = a_
-        if a & (self.page_size - 1):
-            a = (a >> self.page_shift) << self.page_shift
-        remainder = a_ - a 
-        b = b_ - a_ + remainder
-        if b & (self.page_size - 1):
-            b = ((b >> self.page_shift) << self.page_shift) + self.page_size
-        b += a
+        # Floor align start address
+        if start & (self.page_size - 1):
+            start = (start >> self.page_shift) << self.page_shift
 
-        overlap = 0
+        # Ceil align end address
+        if (end + 1) & (self.page_size - 1):
+            end = (
+                (((end + 1) >> self.page_shift) << self.page_shift) + self.page_size - 1
+            )
+
+        # List of overlaping or adjacent regions which must be merged.
+        overlaps: list[Tuple[int, bytes]] = []
         for r_start, r_end, _ in regions:
-            # check for overlaps
-            if a < r_start and r_start < b <= r_end+1:
-                overlap = 1
-                aa = a
-                bb = r_end
-                break
-            elif r_end > a >= r_start-1 and b > r_end:
-                overlap = 1
-                aa = r_start
-                bb = b
-                break
-            elif b == r_start:
-                ## prepend
-                overlap = 1
-                aa = a 
-                bb = r_end
-                break
-            elif a == r_end+1:
-                ## append
-                overlap = 1
-                aa = r_start
-                bb = b
-                break
+            # Region [start, end] is augmented for intersection test to detect adjacency.
+            if self.__region_intersects((start - 1, end + 1), (r_start, r_end)):
+                r_size = r_end - r_start + 1
+                data = self.emu.mem_read(r_start, r_size)
+                self.emu.mem_unmap(r_start, r_size)
+                overlaps.append((r_start, data))
+                start = min(start, r_start)
+                end = max(end, r_end)
 
-        if overlap == 0:
-            aa = a
-            bb = b
-
-        base = aa
-        size = bb - aa
-        if size & (self.page_size - 1):
-            size = ((size >> self.page_shift) << self.page_shift) + self.page_size
-
-        data = None
-        if overlap == 1:
-            ## we want to extend an existing memory region
-            ## so we unmap the oldest one and remap the
-            ## new region
-            size += r_end - r_start + 1
-            ## need to save data before unmapping
-            data = self.emu.mem_read(r_start, r_end-r_start+1)
-            ret = self.emu.mem_unmap(r_start, r_end-r_start+1)
-            if ret is not None:
-                raise Exception(ret)
+        assert start & (self.page_size - 1) == 0
+        assert (end + 1) & (self.page_size - 1) == 0
 
         if verbose:
-            print(f"[*] Mapping 0x{base:X}-0x{base+size:X}")
-
-        ret = self.emu.mem_map(base, size)
-        if data is not None:
-            self.emu.mem_write(r_start, bytes(data))
+            print(f"[*] Mapping 0x{start:X}-0x{end:X}")
+        ret = self.emu.mem_map(start, end - start + 1)
         if ret is not None:
             raise Exception(ret)
+
+        # Restore data of merged regions which have been unmapped
+        for r_start, data in overlaps:
+            self.emu.mem_write(r_start, bytes(data))
 
     def __setitem__(self, inp, val):
         """ Sets a register, memory address or memory range to a value. Handles writing ints or bytes. 
