@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -54,6 +54,3 @@ class rainbow_m68k(rainbowBase):
         ret = self[self["a7"]]
         self["a7"] += self.word_size
         self["pc"] = int.from_bytes(ret, "big")
-
-    def block_handler(self, uci, address, size, user_data):
-        self.base_block_handler(address)

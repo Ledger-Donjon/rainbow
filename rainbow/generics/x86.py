@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -55,6 +55,3 @@ class rainbow_x86(rainbowBase):
         ret = self[self["esp"]]
         self["esp"] += self.word_size
         self["eip"] = int.from_bytes(ret, "little")
-
-    def block_handler(self, uci, address, size, user_data):
-        self.base_block_handler(address)

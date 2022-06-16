@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -52,6 +52,3 @@ class rainbow_aarch64(rainbowBase):
 
     def return_force(self):
         self["pc"] = self["lr"]
-
-    def block_handler(self, uci, address, size, user_data):
-        self.base_block_handler(address)

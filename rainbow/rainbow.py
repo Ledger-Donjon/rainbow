@@ -381,7 +381,7 @@ class rainbowBase:
                     print("Error:", e)
                     print("Usage: type \"DEAD0000 32\" for instance")
                     continue
-        
+
 
         if self.trace:
             if self.reg_leak is not None:
@@ -429,13 +429,11 @@ class rainbowBase:
         """ Performs a simulated function return """
         raise NotImplementedError
 
-    def block_handler(self, uci, address, size, user_data):
-        """ Hook on every basic block """
-        raise NotImplementedError
-
-    def base_block_handler(self, address):
-        """ 
-        Hook called on every jump to a basic block that checks if a known address+function is redefined in the user's python script and if so, calls that instead 
+    def block_handler(self, _uci, address: int, _size, _user_data):
+        """
+        Hook called on every jump to a basic block that checks if a known
+        address+function is redefined in the user's python script and if so,
+        calls that instead
         """
         if address in self.function_names.keys():
             f = self.function_names[address]
