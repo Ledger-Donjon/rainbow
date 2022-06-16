@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -16,9 +16,18 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
-from .cortexm import rainbow_cortexm
-from .arm import rainbow_arm
 from .aarch64 import rainbow_aarch64
-from .x86 import rainbow_x86
-from .x64 import rainbow_x64
+from .arm import rainbow_arm
+from .cortexm import rainbow_cortexm
 from .m68k import rainbow_m68k
+from .x64 import rainbow_x64
+from .x86 import rainbow_x86
+
+__all__ = [
+    rainbow_aarch64,
+    rainbow_arm,
+    rainbow_cortexm,
+    rainbow_m68k,
+    rainbow_x64,
+    rainbow_x86,
+]
