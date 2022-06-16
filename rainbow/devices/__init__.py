@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -17,3 +17,9 @@
 # Copyright 2019 Victor Servant, Ledger SAS
 
 from .stm32 import rainbow_stm32, rainbow_stm32f215, rainbow_stm32l431
+
+__all__ = [
+    rainbow_stm32,
+    rainbow_stm32f215,
+    rainbow_stm32l431,
+]
