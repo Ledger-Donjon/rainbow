@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -23,7 +23,7 @@ def elfloader(elf_file, emu, verbose=False):
     """ Load an .elf file into emu's memory using LIEF """
     elffile = lief.parse(elf_file)
     if verbose:
-        print(f"[x] Loading .elf ...")
+        print(f"[x] Loading ELF segments...")
 
     if len(list(elffile.segments)) > 0:
         for segment in elffile.segments:
@@ -31,19 +31,12 @@ def elfloader(elf_file, emu, verbose=False):
             if segment.type != lief.ELF.SEGMENT_TYPES.LOAD:
                 continue
 
-            for section in segment.sections:
-                # Only consider sections flagged ALLOC
-                if lief.ELF.SECTION_FLAGS.ALLOC not in section.flags_list:
-                    continue
-
-                if verbose:
-                    print(
-                        f"[=] Writing {section.name} on {section.virtual_address:x} - {section.virtual_address+section.size:x}"
-                    )
-                emu.map_space(
-                    section.virtual_address, section.virtual_address + section.size
-                )
-                emu.emu.mem_write(section.virtual_address, bytes(section.content))
+            if verbose:
+                print(f"[=] Writing {segment.physical_address:x} - {segment.physical_address+segment.physical_size:x}")
+            emu.map_space(
+                segment.physical_address, segment.physical_address + segment.physical_size
+            )
+            emu.emu.mem_write(segment.physical_address, bytes(segment.content))
     else:
         # if there are no segments, still attempt to map .text area
         section = elffile.get_section(".text")
