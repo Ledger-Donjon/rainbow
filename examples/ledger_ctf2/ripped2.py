@@ -12,11 +12,9 @@ def time(em):
 
 def clock_gettime(em):
     em["rax"] = 0
-    return True
 
 def rand(em):
     em["rax"] = 7
-    return True
 
 
 e = rainbow_x64(sca_mode=True)
