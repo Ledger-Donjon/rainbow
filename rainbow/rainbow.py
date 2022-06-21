@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -403,27 +403,27 @@ class rainbowBase:
     def hook_prolog(self, name, fn):
         """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn, execution resumes into 'name' """
         if name not in self.functions.keys():
-            raise Exception(f"'{name}' could not be found.")
+            raise IndexError(f"'{name}' could not be found.")
 
         def to_hook(x):
             fn(x)
-            return False 
+            return False
 
-        self.stubbed_functions[name] = to_hook 
+        self.stubbed_functions[name] = to_hook
 
     def hook_bypass(self, name, fn=None):
         """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn', execution returns to the caller """
         if name not in self.functions.keys():
-            raise Exception(f"'{name}' could not be found.")
+            raise IndexError(f"'{name}' could not be found.")
 
         if fn is None:
             fn = lambda x:x
 
         def to_hook(x):
             fn(x)
-            return True 
+            return True
 
-        self.stubbed_functions[name] = to_hook 
+        self.stubbed_functions[name] = to_hook
 
     def return_force(self):
         """ Performs a simulated function return """
