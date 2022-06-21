@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -18,8 +18,9 @@
 
 import lief
 
+
 def peloader(exe_file, emu, verbose=False):
-    """ Load a .exe file into emu's memory using LIEF """
+    """Load a .exe file into emu's memory using LIEF"""
     pefile = lief.parse(exe_file)
     if verbose:
         print(f"[x] Loading .exe ...")
@@ -27,11 +28,13 @@ def peloader(exe_file, emu, verbose=False):
     imagebase = pefile.optional_header.imagebase
     for section in pefile.sections:
         if verbose:
-            print(
-                f"[=] Writing {section.name} on {imagebase+section.virtual_address:x} - {imagebase+section.virtual_address+section.size:x}"
-            )
-        emu.map_space(imagebase+section.virtual_address, imagebase+section.virtual_address + section.size)
-        emu.emu.mem_write(imagebase+section.virtual_address, bytes(section.content))
+            print(f"[=] Writing {section.name}")
+        emu.map_space(
+            imagebase + section.virtual_address,
+            imagebase + section.virtual_address + section.size,
+            verbose=verbose,
+        )
+        emu.emu.mem_write(imagebase + section.virtual_address, bytes(section.content))
 
     emu.functions = {}
 

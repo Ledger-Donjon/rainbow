@@ -20,15 +20,13 @@ from intelhex import IntelHex
 
 
 def hexloader(hex_file, emu, verbose=False):
-    """ Load a intel hex file into emu's memory using IntelHex """
+    """Load a intel hex file into emu's memory using IntelHex"""
     itx = IntelHex(hex_file)
 
     if verbose:
         print("[x] Loading HEX segments...")
 
     for s_start, s_end in itx.segments():
-        emu.map_space(s_start, s_end)
-        data = itx.tobinstr(s_start, s_end-1)
-        if verbose:
-            print(f"[=] Writing {s_start:x} - {s_start+len(data):x}")
+        data = itx.tobinstr(s_start, s_end - 1)
+        emu.map_space(s_start, s_start + len(data), verbose=verbose)
         emu.emu.mem_write(s_start, data)

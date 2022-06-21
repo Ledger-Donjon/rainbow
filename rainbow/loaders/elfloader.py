@@ -20,7 +20,7 @@ import lief
 
 
 def elfloader(elf_file, emu, verbose=False):
-    """ Load an .elf file into emu's memory using LIEF """
+    """Load an .elf file into emu's memory using LIEF"""
     elffile = lief.parse(elf_file)
     if verbose:
         print(f"[x] Loading ELF segments...")
@@ -31,20 +31,20 @@ def elfloader(elf_file, emu, verbose=False):
             if segment.type != lief.ELF.SEGMENT_TYPES.LOAD:
                 continue
 
-            if verbose:
-                print(f"[=] Writing {segment.physical_address:x} - {segment.physical_address+segment.physical_size:x}")
             emu.map_space(
-                segment.physical_address, segment.physical_address + segment.physical_size
+                segment.physical_address,
+                segment.physical_address + segment.physical_size,
+                verbose=verbose,
             )
             emu.emu.mem_write(segment.physical_address, bytes(segment.content))
     else:
         # if there are no segments, still attempt to map .text area
         section = elffile.get_section(".text")
-        if verbose:
-            print(
-                f"[=] Writing {section.name} on {section.virtual_address:x} - {section.virtual_address+section.size:x}"
-            )
-        emu.map_space(section.virtual_address, section.virtual_address + section.size)
+        emu.map_space(
+            section.virtual_address,
+            section.virtual_address + section.size,
+            verbose=verbose,
+        )
         emu.emu.mem_write(section.virtual_address, bytes(section.content))
 
     # Handle relocations
