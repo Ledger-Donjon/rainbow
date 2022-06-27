@@ -11,6 +11,12 @@ def test_elfloader_cortexm_aes():
 
 
 def test_elfloader_trezor():
+    """Test loading HW_analysis trezor.elf with virtual segments mapped"""
+    emu = rainbow_arm()
+    emu.load("examples/HW_analysis/trezor.elf", map_virtual_segments=True, verbose=True)
+
+
+def test_elfloader_trezor():
     """Test loading HW_analysis trezor.elf"""
     emu = rainbow_arm()
     emu.load("examples/HW_analysis/trezor.elf", verbose=True)

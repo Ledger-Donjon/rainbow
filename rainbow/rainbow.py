@@ -236,9 +236,9 @@ class rainbowBase:
         if isinstance(s, slice):
             return self.emu.mem_read(s.start, s.stop - s.start)
 
-    def load(self, filename, typ=None, verbose=False):
+    def load(self, filename, *args, **kwargs):
         """ Load a file into the emulator's memory """
-        return load_selector(filename, self, typ, verbose=verbose)
+        return load_selector(filename, self, *args, **kwargs)
 
     def start(self, begin, end, timeout=0, count=0, verbose=True):
         """ Begin emulation """
