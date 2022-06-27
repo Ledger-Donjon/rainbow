@@ -17,6 +17,7 @@
 # Copyright 2019 Victor Servant, Ledger SAS
 
 import random
+import importlib.resources
 
 import unicorn as uc
 
@@ -74,15 +75,12 @@ class rainbow_stm32f215(rainbow_stm32):
         self.setup_step()
 
     def setup_step(self):
-        import pkg_resources
-
-        ## Get register dictionary (dumped from .svd file)
+        # Load register dictionary dumped from SVD file
         if not self.OTHER_REGS_NAMES:
-            regs_pickle = pkg_resources.resource_filename(
-                __name__, "/stm32f215.pickle")
-            self.load_other_regs_from_pickle(regs_pickle)
+            with importlib.resources.path(__package__, "stm32f215.pickle") as p:
+                self.load_other_regs_from_pickle(p)
 
-        ## Map specific memory regions
+        # Map specific memory regions
         self.map_space(*self.FLASH)
         self.map_space(*self.RAM)
         self.map_space(*self.FSMC)
@@ -93,7 +91,7 @@ class rainbow_stm32f215(rainbow_stm32):
 class rainbow_stm32l431(rainbow_stm32):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        import pkg_resources
-        regs_pickle = pkg_resources.resource_filename(
-            __name__, "/stm32l4x1.pickle")
-        self.load_other_regs_from_pickle(regs_pickle)
+
+        # Load register dictionary dumped from SVD file
+        with importlib.resources.path(__package__, "stm32l4x1.pickle") as p:
+            self.load_other_regs_from_pickle(p)
