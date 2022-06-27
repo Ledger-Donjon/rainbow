@@ -27,6 +27,14 @@ def test_reset(rainbow_class):
     emu.reset()
 
 
+@pytest.mark.parametrize("rainbow_class", all_devices)
+def test_init_start_del(rainbow_class):
+    """Test creating, starting and destroying a rainbow instance"""
+    emu = rainbow_class()
+    emu.start(0, 2)
+    del emu
+
+
 def test_stm32_rng():
     """Test STM32 device random number generator
 
