@@ -77,7 +77,7 @@ class rainbow_stm32f215(rainbow_stm32):
         import pkg_resources
 
         ## Get register dictionary (dumped from .svd file)
-        if self.OTHER_REGS_NAMES is None:
+        if not self.OTHER_REGS_NAMES:
             regs_pickle = pkg_resources.resource_filename(
                 __name__, "/stm32f215.pickle")
             self.load_other_regs_from_pickle(regs_pickle)

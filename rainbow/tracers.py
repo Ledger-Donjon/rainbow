@@ -48,7 +48,11 @@ def regs_hw_sum_trace(uci: uc.Uc, address: int, size: int, rbw):
     if ins is not None:
         # Find out which registers are modified
         _, regs_written = registers_accessed_by_instruction(ins)
-        v = sum(hw(uci.reg_read(r)) for r in regs_written)
+        v = sum(
+            hw(uci.reg_read(r))
+            for r in regs_written
+            if ins.reg_name(r) not in rbw.TRACE_DISCARD
+        )
 
         rbw.sca_address_trace.append(f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}")
         rbw.sca_values_trace.append(v)
@@ -77,7 +81,7 @@ def regs_hd_sum_trace(uci: uc.Uc, address: int, size: int, rbw):
 
         v = 0
         for r in regs_written:
-            if r in rbw.TRACE_DISCARD:
+            if ins.reg_name(r) in rbw.TRACE_DISCARD:
                 continue
             v += hw(rbw.RegistersBackup[r] ^ uci.reg_read(r))
             rbw.RegistersBackup[r] = uci.reg_read(r)
@@ -104,7 +108,7 @@ def wb_regs_trace(uci: uc.Uc, address: int, size: int, rbw):
         _, regs_written = registers_accessed_by_instruction(ins)
 
         for r in regs_written:
-            if r in rbw.TRACE_DISCARD:
+            if ins.reg_name(r) in rbw.TRACE_DISCARD:
                 continue
 
             rbw.sca_address_trace.append(ins)
