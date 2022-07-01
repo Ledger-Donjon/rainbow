@@ -56,7 +56,7 @@ def test_regs_tracer_discard(regs_tracer):
     assert len(emu.sca_values_trace) > 0
     trace1 = emu.sca_values_trace
 
-    # Again but without r0
+    # Again but without r0-r4
     emu.TRACE_DISCARD = ["r0", "r1", "r2", "r3", "r4"]
     emu["r0"] = key_addr
     emu["r1"] = rk_addr + 16

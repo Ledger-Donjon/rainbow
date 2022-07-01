@@ -1,0 +1,62 @@
+from rainbow.devices.stm32 import rainbow_stm32f215
+from rainbow.fault_models import fault_skip, fault_stuck_at
+
+
+def test_fault_skip():
+    """Test trezor pin verification instruction skip"""
+    emu = rainbow_stm32f215()
+    emu.load("examples/HW_analysis/trezor.elf")
+
+    # Setup reference pin and attempt
+    emu[0x08008110 + 0x189] = b"1874\x00"
+    emu[0xCAFECAFE] = b"0000\x00"
+
+    # Skip a branch inside storage_containsPin
+    emu["r0"] = 0xCAFECAFE
+    emu["lr"] = 0xAAAAAAAA
+    assert not emu.start(emu.functions["storage_containsPin"], 0xAAAAAAAA, count=15)
+    fault_skip(emu)
+    assert not emu.start(emu["pc"], 0xAAAAAAAA, count=100)
+
+    # Check that the function returned a faulted value
+    assert emu["r0"] == 0xCAFECAFE and emu["pc"] == 0xAAAAAAAA
+
+
+def test_fault_stuck_at_zeros():
+    """Test trezor pin verification skip using stuck at zeros model"""
+    emu = rainbow_stm32f215()
+    emu.load("examples/HW_analysis/trezor.elf")
+
+    # Setup reference pin and attempt
+    emu[0x08008110 + 0x189] = b"1874\x00"
+    emu[0xCAFECAFE] = b"0000\x00"
+
+    # Skip a branch inside storage_containsPin
+    emu["r0"] = 0xCAFECAFE
+    emu["lr"] = 0xAAAAAAAA
+    assert not emu.start(emu.functions["storage_containsPin"], 0xAAAAAAAA, count=40)
+    fault_stuck_at(emu)
+    assert not emu.start(emu["pc"], 0xAAAAAAAA, count=100)
+
+    # Check that the function returned a faulted value
+    assert emu["r0"] == 0x1 and emu["pc"] == 0xAAAAAAAA
+
+
+def test_fault_stuck_at_ones():
+    """Test trezor pin verification skip using stuck at ones model"""
+    emu = rainbow_stm32f215()
+    emu.load("examples/HW_analysis/trezor.elf")
+
+    # Setup reference pin and attempt
+    emu[0x08008110 + 0x189] = b"1874\x00"
+    emu[0xCAFECAFE] = b"0000\x00"
+
+    # Skip a branch inside storage_containsPin
+    emu["r0"] = 0xCAFECAFE
+    emu["lr"] = 0xAAAAAAAA
+    assert not emu.start(emu.functions["storage_containsPin"], 0xAAAAAAAA, count=2)
+    fault_stuck_at(emu, 0xFFFFFFFF)
+    assert not emu.start(emu["pc"], 0xAAAAAAAA, count=100)
+
+    # Check that the function returned a faulted value
+    assert emu["r0"] == 0x1 and emu["pc"] == 0xAAAAAAAA
