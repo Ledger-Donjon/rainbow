@@ -2,6 +2,7 @@
 
 import numpy as np
 from rainbow.devices.stm32 import rainbow_stm32f215 as rainbow_stm32
+from rainbow.fault_models import fault_skip
 from rainbow.utils.plot import viewer
 
 # Pick any reference pin (STORED_PIN) and a different input pin
@@ -37,31 +38,34 @@ fault_trace = [0] * N
 crash_trace = [0] * N
 
 print("Loop on all possible skips")
-print("r0 should be 0 at the end of the function if no fault occurred") 
+print("r0 should be 0 at the end of the function if no fault occurred")
 for i in range(1, N):
     e.reset()
 
     ## The first fault might not actually work depending
     ## on the value of r5 when calling. Remove comment to observe
-    # e['r5'] = 0x60000000  
+    # e['r5'] = 0x60000000
 
-    e['r0'] = 0xcafecafe 
+    e['r0'] = 0xcafecafe
     e['lr'] = 0xaaaaaaaa
 
+    # Run i instructions
     e.start(e.functions['storage_containsPin'], 0xaaaaaaaa, count=i)
 
+    # Print current instruction
     pc = e['pc']
     d = e.disassemble_single(pc, 4)
     e.print_asmline(pc, d[2], d[3])
 
-    # instruction skip : resume execution at pc + current instruction size 
-    ret = e.start(pc+d[1], 0xaaaaaaaa, count=100)
+    # Skip one instruction and resume emulation
+    fault_skip(e)
+    ret = e.start(e["pc"], 0xaaaaaaaa, count=100, verbose=False)
 
     if not ret:
       if result(e):
         total_faults += 1
         fault_trace[i] = 1
-        print(" <-- r0 =", hex(e['r0']))
+        print(" <-- r0 =", hex(e['r0']), end="")
     else:
       total_crashes += 1
       crash_trace[i] = 1
@@ -77,12 +81,12 @@ e.trace = 1
 e.trace_regs = 1
 e.mem_trace = 0
 
-e['r0'] = 0xcafecafe 
+e['r0'] = 0xcafecafe
 e['lr'] = 0xaaaaaaaa
 
 e.start(e.functions['storage_containsPin'], 0xaaaaaaaa)
 
 trace = np.array(e.sca_values_trace, dtype=np.uint8)
-fault_trace = trace.max() - np.array(fault_trace, dtype=np.uint8)[:trace.shape[0]] * trace.max() 
+fault_trace = trace.max() - np.array(fault_trace, dtype=np.uint8)[:trace.shape[0]] * trace.max()
 
 viewer(e.sca_address_trace, np.array([trace, fault_trace]))
