@@ -255,6 +255,32 @@ class rainbowBase:
             return True
         return False
 
+    def start_and_fault(self, fault_model, fault_model_kwargs, fault_index: int, begin: int, *args, **kwargs):
+        """Begin emulation but inject a fault at specified index
+
+        This method takes 3 arguments to configure the fault, then the same
+        arguments as .start().
+
+        Injection faults can often led to invalid instructions which are raised
+        as exceptions during emulation.
+
+        Example:
+            Let's consider that we have a function that we can run with::
+
+                emu.start(0x01010101, 0xAAAAAAAA)
+
+            To fault the written register at the 3rd instruction to 0xFFFFFFFF::
+
+                emu.start_and_fault(fault_stuck_at, {"value": 0xFFFFFFFF}, 2,
+                                    0x01010101, 0xAAAAAAAA)
+        """
+        kwargs_before = {**kwargs, "count": fault_index}
+        self.start(begin, *args, **kwargs_before)
+        fault_model(self, **fault_model_kwargs)
+        if "count" in kwargs:
+            kwargs["count"] -= fault_index
+        self.start(self["pc"], *args, **kwargs)
+
     def setup(self):
         """ Sets up a stack and adds base hooks to the engine """
         ## Add a stack
