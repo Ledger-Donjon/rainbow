@@ -252,11 +252,12 @@ class rainbowBase:
             pc = self.emu.reg_read(uc.arm_const.UC_ARM_REG_PC)
             raise RuntimeError(f"Emulation crashed at 0x{pc:X}") from e
 
-    def start_and_fault(self, fault_model, fault_index: int, begin: int, *args, **kwargs):
+    def start_and_fault(self, fault_model, fault_index: int, begin: int, end: int, *args, **kwargs) -> int:
         """Begin emulation but inject a fault at specified index
 
         This method takes the fault model and index, then the same arguments as
-        rainbow.start().
+        rainbow.start(). It returns the memory address at which the fault was
+        applied.
 
         Injection faults can often led to invalid instructions which are raised
         as exceptions during emulation.
@@ -271,15 +272,23 @@ class rainbowBase:
                 emu.start_and_fault(fault_stuck_at(0xFFFFFFFF), 2, 0x01010101, 0xAAAAAAAA)
         """
         kwargs_before = {**kwargs, "count": fault_index}
-        self.start(begin, *args, **kwargs_before)
-        fault_model(self)
         if "count" in kwargs:
             kwargs["count"] -= fault_index
-            if kwargs["count"] == 0:
-                return  # fault last instruction
-            elif kwargs["count"] < 0:
+            if kwargs["count"] <= 0:
                 raise IndexError("fault_index must be smaller than count")
-        self.start(self["pc"], *args, **kwargs)
+
+        # Emulation before fault
+        self.start(begin, end, *args, **kwargs_before)
+        pc_fault = self['pc']
+        if pc_fault // 2 == end // 2:
+            raise IndexError("reached end of function before faulting")
+
+        # PewPew!
+        fault_model(self)
+
+        # Emulation after fault
+        self.start(self["pc"], end, *args, **kwargs)
+        return pc_fault
 
     def setup(self):
         """ Sets up a stack and adds base hooks to the engine """
