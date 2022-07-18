@@ -275,6 +275,10 @@ class rainbowBase:
         fault_model(self)
         if "count" in kwargs:
             kwargs["count"] -= fault_index
+            if kwargs["count"] == 0:
+                return  # fault last instruction
+            elif kwargs["count"] < 0:
+                raise IndexError("fault_index must be smaller than count")
         self.start(self["pc"], *args, **kwargs)
 
     def setup(self):
