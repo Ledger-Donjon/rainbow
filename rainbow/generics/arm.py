@@ -47,6 +47,11 @@ class rainbow_arm(rainbowBase):
 
         self.reset_stack()
 
+    def start(self, begin, *args, **kwargs):
+        # ARM Thumb mode case
+        thumb_bit = (self["cpsr"] >> 5) & 1
+        return super().start(begin | thumb_bit, *args, **kwargs)
+
     def reset_stack(self):
         self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
 

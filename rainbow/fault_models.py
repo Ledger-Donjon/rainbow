@@ -62,8 +62,7 @@ def fault_stuck_at(value: int = 0):
 
         # We're stopped before executing the target instruction
         # so we step once and then inject the fault
-        thumb_bit = (emu["cpsr"] >> 5) & 1
-        emu.start(current_pc | thumb_bit, 0, count=1)
+        emu.start(current_pc, 0, count=1)
 
         # Inject the fault
         for reg_name in regs_written:
