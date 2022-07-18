@@ -73,4 +73,5 @@ def fault_stuck_at(value: int = 0):
             emu[reg_name] = value
             break  # only fault one register, this could be improved later
 
+    f.__name__ = f"fault_stuck_at_0x{value:X}"
     return f
