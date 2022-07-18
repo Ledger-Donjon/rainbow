@@ -59,14 +59,13 @@ for i in range(1, N):
 
     # Skip one instruction and resume emulation
     fault_skip(e)
-    ret = e.start(e["pc"], 0xaaaaaaaa, count=100, verbose=False)
-
-    if not ret:
+    try:
+      e.start(e["pc"], 0xaaaaaaaa, count=100, verbose=False)
       if result(e):
         total_faults += 1
         fault_trace[i] = 1
         print(" <-- r0 =", hex(e['r0']), end="")
-    else:
+    except RuntimeError:
       total_crashes += 1
       crash_trace[i] = 1
       print("crashed")

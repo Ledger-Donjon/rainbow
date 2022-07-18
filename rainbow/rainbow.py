@@ -240,7 +240,7 @@ class rainbowBase:
         """ Load a file into the emulator's memory """
         return load_selector(filename, self, typ, verbose=verbose)
 
-    def start(self, begin, end, timeout=0, count=0, verbose=True):
+    def start(self, begin, end, timeout=0, count=0) -> None:
         """ Begin emulation """
         try:
             # Copy the original registers into the backup before starting the process
@@ -249,11 +249,8 @@ class rainbowBase:
             self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
             self.emu.emu_stop()
-            if verbose:
-                pc = self.emu.reg_read(uc.arm_const.UC_ARM_REG_PC)
-                print(f"[*] Emulation crashed at 0x{pc:X}: {e}")
-            return True
-        return False
+            pc = self.emu.reg_read(uc.arm_const.UC_ARM_REG_PC)
+            raise RuntimeError(f"Emulation crashed at 0x{pc:X}") from e
 
     def start_and_fault(self, fault_model, fault_index: int, begin: int, *args, **kwargs):
         """Begin emulation but inject a fault at specified index

@@ -31,6 +31,7 @@ def test_reset(rainbow_class):
 def test_init_start_del(rainbow_class):
     """Test creating, starting and destroying a rainbow instance"""
     emu = rainbow_class()
+    emu.map_space(0, 0x400)
     emu.start(0, 2)
     del emu
 
@@ -58,10 +59,10 @@ def test_stm32_rng():
     random.seed(42)
     emu = rainbow_stm32f215()
     emu.emu.mem_write(ADDRESS, CODE)
-    assert not emu.start(ADDRESS | 1, 0, count=8)
+    emu.start(ADDRESS | 1, 0, count=8)
     assert emu["r6"] == 0xA3B1799D
 
     # Try to rerun the same code again with a different seed
     random.seed(64)
-    assert not emu.start(ADDRESS | 1, 0, count=8)
+    emu.start(ADDRESS | 1, 0, count=8)
     assert emu["r6"] == 0x79E58218
