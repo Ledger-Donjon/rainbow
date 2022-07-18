@@ -15,7 +15,7 @@ def test_fault_skip():
     emu["r0"] = 0xCAFECAFE
     emu["lr"] = 0xAAAAAAAA
     begin = emu.functions["storage_containsPin"]
-    emu.start_and_fault(fault_skip, {}, 15, begin, 0xAAAAAAAA)
+    emu.start_and_fault(fault_skip, 15, begin, 0xAAAAAAAA)
 
     # Check that the function returned a faulted value
     assert emu["r0"] == 0xCAFECAFE and emu["pc"] == 0xAAAAAAAA
@@ -34,7 +34,7 @@ def test_fault_stuck_at_zeros():
     emu["r0"] = 0xCAFECAFE
     emu["lr"] = 0xAAAAAAAA
     begin = emu.functions["storage_containsPin"]
-    emu.start_and_fault(fault_stuck_at, {}, 40, begin, 0xAAAAAAAA)
+    emu.start_and_fault(fault_stuck_at(), 40, begin, 0xAAAAAAAA)
 
     # Check that the function returned a faulted value
     assert emu["r0"] == 0x1 and emu["pc"] == 0xAAAAAAAA
@@ -53,7 +53,7 @@ def test_fault_stuck_at_ones():
     emu["r0"] = 0xCAFECAFE
     emu["lr"] = 0xAAAAAAAA
     begin = emu.functions["storage_containsPin"]
-    emu.start_and_fault(fault_stuck_at, {"value": 0xFFFFFFFF}, 2, begin, 0xAAAAAAAA)
+    emu.start_and_fault(fault_stuck_at(0xFFFFFFFF), 2, begin, 0xAAAAAAAA)
 
     # Check that the function returned a faulted value
     assert emu["r0"] == 0x1 and emu["pc"] == 0xAAAAAAAA

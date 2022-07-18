@@ -255,11 +255,11 @@ class rainbowBase:
             return True
         return False
 
-    def start_and_fault(self, fault_model, fault_model_kwargs, fault_index: int, begin: int, *args, **kwargs):
+    def start_and_fault(self, fault_model, fault_index: int, begin: int, *args, **kwargs):
         """Begin emulation but inject a fault at specified index
 
-        This method takes 3 arguments to configure the fault, then the same
-        arguments as .start().
+        This method takes the fault model and index, then the same arguments as
+        rainbow.start().
 
         Injection faults can often led to invalid instructions which are raised
         as exceptions during emulation.
@@ -271,12 +271,11 @@ class rainbowBase:
 
             To fault the written register at the 3rd instruction to 0xFFFFFFFF::
 
-                emu.start_and_fault(fault_stuck_at, {"value": 0xFFFFFFFF}, 2,
-                                    0x01010101, 0xAAAAAAAA)
+                emu.start_and_fault(fault_stuck_at(0xFFFFFFFF), 2, 0x01010101, 0xAAAAAAAA)
         """
         kwargs_before = {**kwargs, "count": fault_index}
         self.start(begin, *args, **kwargs_before)
-        fault_model(self, **fault_model_kwargs)
+        fault_model(self)
         if "count" in kwargs:
             kwargs["count"] -= fault_index
         self.start(self["pc"], *args, **kwargs)
