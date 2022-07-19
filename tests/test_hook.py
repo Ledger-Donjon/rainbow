@@ -10,14 +10,14 @@ def test_hook_bypass_ctf2():
         e["rax"] = 0
 
     emu.hook_bypass("strtol", strtol)
-    assert not emu.start(0xCA9, 0xDCE)
+    emu.start(0xCA9, 0xDCE)
 
 
 def test_hook_bypass_ctf2_empty():
     emu = rainbow_x64()
     emu.load("examples/ledger_ctf2/ctf2", typ=".elf")
     emu.hook_bypass("strtol")
-    assert not emu.start(0xCA9, 0xDCE)
+    emu.start(0xCA9, 0xDCE)
 
 
 def test_hook_bypass_missing_name():

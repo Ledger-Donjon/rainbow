@@ -90,7 +90,7 @@ def main_func(inputt):
     ret = e.start(e.functions["main"], 0x1038)
 
     # sometimes execution stops if this line is not there (unicorn instance gets gc'ed ?)
-    print(ret * " ", end="")
+    print(ret, end="")
 
     # Now switch 'rand' to 7 so that we'll execute the correct AES's
     # first round

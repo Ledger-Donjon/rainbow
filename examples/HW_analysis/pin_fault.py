@@ -49,27 +49,29 @@ for i in range(1, N):
     e['r0'] = 0xcafecafe
     e['lr'] = 0xaaaaaaaa
 
-    # Run i instructions
-    e.start(e.functions['storage_containsPin'], 0xaaaaaaaa, count=i)
-
-    # Print current instruction
-    pc = e['pc']
-    d = e.disassemble_single(pc, 4)
-    e.print_asmline(pc, d[2], d[3])
-
-    # Skip one instruction and resume emulation
-    fault_skip(e)
-    ret = e.start(e["pc"], 0xaaaaaaaa, count=100, verbose=False)
-
-    if not ret:
-      if result(e):
-        total_faults += 1
-        fault_trace[i] = 1
-        print(" <-- r0 =", hex(e['r0']), end="")
-    else:
+    try:
+      # Run i instructions, then inject skip, then run
+      pc = e.start_and_fault(fault_skip, i, e.functions['storage_containsPin'], 0xaaaaaaaa, count=100)
+    except RuntimeError:
+      # Fault crashed the emulation
       total_crashes += 1
       crash_trace[i] = 1
+      d = e.disassemble_single(pc, 4)
+      e.print_asmline(pc, d[2], d[3])
+      pc += d[1]
       print("crashed")
+      continue
+
+    # Print current instruction
+    d = e.disassemble_single(pc, 4)
+    e.print_asmline(pc, d[2], d[3])
+    pc += d[1]
+
+    if result(e):
+      # Successful fault
+      total_faults += 1
+      fault_trace[i] = 1
+      print(" <-- r0 =", hex(e['r0']), end="")
 
 print(f"\n=== {total_faults} faults found ===")
 print(f"=== {total_crashes} crashes ===")

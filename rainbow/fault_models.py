@@ -19,7 +19,9 @@
 
 """
 This module is a collection of fault injection models.
-Each function updates the emulator state according to their model.
+A fault model is defined as a function that takes only a Rainbow instance as
+argument, then updates the emulator state according to their model and returns
+nothing.
 """
 
 from .rainbow import rainbowBase
@@ -38,33 +40,40 @@ def fault_skip(emu: rainbowBase):
     _, ins_size, _, _ = ins
 
     # Skip one instruction
+    # Save and restore CPSR register as Unicorn changes its value
+    cpsr = emu["cpsr"]
     emu["pc"] = current_pc + ins_size
+    emu["cpsr"] = cpsr
 
 
-def fault_stuck_at(emu: rainbowBase, value: int = 0):
-    """Inject `value` in current instruction destination register
+def fault_stuck_at(value: int = 0):
+    """Return a fault model that will inject `value` in current instruction
+    destination register
 
     This will run current instruction and increase program counter.
     Right now this only handles ARM emulation.
     """
-    # Get registers updated by current instruction
-    current_pc = emu["pc"]
-    ins = emu.disassemble_single_detailed(current_pc, 4)
-    if ins is None:
-        raise RuntimeError("Faulting an invalid instruction")
-    _, regs_written = ins.regs_access()
-    regs_written = map(ins.reg_name, regs_written)
 
-    # We're stopped before executing the target instruction
-    # so we step once and then inject the fault
-    thumb_bit = (emu["cpsr"] >> 5) & 1
-    if emu.start(current_pc | thumb_bit, 0, count=1):
-        return RuntimeError("Emulation crashed")
+    def f(emu: rainbowBase):
+        # Get registers updated by current instruction
+        current_pc = emu["pc"]
+        ins = emu.disassemble_single_detailed(current_pc, 4)
+        if ins is None:
+            raise RuntimeError("Faulting an invalid instruction")
+        _, regs_written = ins.regs_access()
+        regs_written = map(ins.reg_name, regs_written)
 
-    # Inject the fault
-    for reg_name in regs_written:
-        if reg_name.lower() in ["cpsr", "pc", "lr"]:
-            continue  # ignore
+        # We're stopped before executing the target instruction
+        # so we step once and then inject the fault
+        emu.start(current_pc, 0, count=1)
 
-        emu[reg_name] = value
-        break  # only fault one register, this could be improved later
+        # Inject the fault
+        for reg_name in regs_written:
+            if reg_name.lower() in ["cpsr", "pc", "lr"]:
+                continue  # ignore
+
+            emu[reg_name] = value
+            break  # only fault one register, this could be improved later
+
+    f.__name__ = f"fault_stuck_at_0x{value:X}"
+    return f

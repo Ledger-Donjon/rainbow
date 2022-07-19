@@ -40,5 +40,10 @@ def test_init_start_del(rainbow_class):
         pytest.skip("end of memory unmap bug with Unicorn 1")
 
     emu = rainbow_class()
-    emu.start(0, 2)
+    emu.map_space(0, 0x400)
+    if rainbow_class == rainbow_aarch64:
+        emu[0] = b"\x1f\x20\x03\xd5"  # NOP
+    if rainbow_class == rainbow_m68k:
+        emu[0] = b"\x4E\x71\x4E\x71"  # NOP;NOP
+    emu.start(0, 4)
     del emu
