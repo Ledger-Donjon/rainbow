@@ -40,7 +40,10 @@ def fault_skip(emu: rainbowBase):
     _, ins_size, _, _ = ins
 
     # Skip one instruction
+    # Save and restore CPSR register as Unicorn changes its value
+    cpsr = emu["cpsr"]
     emu["pc"] = current_pc + ins_size
+    emu["cpsr"] = cpsr
 
 
 def fault_stuck_at(value: int = 0):
