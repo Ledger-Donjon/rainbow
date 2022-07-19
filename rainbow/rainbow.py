@@ -285,6 +285,8 @@ class rainbowBase:
 
         # PewPew!
         fault_model(self)
+        if self.trace:
+            print(color("YELLOW", f" /!\\ {fault_model.__name__} /!\\ "), end="")
 
         # Emulation after fault
         self.start(self["pc"], end, *args, **kwargs)
