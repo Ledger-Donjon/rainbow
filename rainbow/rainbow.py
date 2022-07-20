@@ -95,6 +95,9 @@ class rainbowBase:
         for start, end, _ in self.emu.mem_regions():
             self.emu.mem_unmap(start, end - start + 1)
 
+        # Calling colorama.init too many times without deinit may cause issues
+        colorama.deinit()
+
     def trace_reset(self):
         self.reg_leak = None
         self.sca_address_trace = []
@@ -285,6 +288,8 @@ class rainbowBase:
 
         # PewPew!
         fault_model(self)
+        if self.trace:
+            print(color("YELLOW", f" /!\\ {fault_model.__name__} /!\\ "), end="")
 
         # Emulation after fault
         self.start(self["pc"], end, *args, **kwargs)

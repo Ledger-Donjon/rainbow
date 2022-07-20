@@ -25,6 +25,7 @@ nothing.
 """
 
 from .rainbow import rainbowBase
+from .color_functions import color
 
 
 def fault_skip(emu: rainbowBase):
@@ -38,6 +39,11 @@ def fault_skip(emu: rainbowBase):
     if ins is None:
         raise RuntimeError("Skipping an invalid instruction")
     _, ins_size, _, _ = ins
+    if emu.trace:
+        print(
+            "\n" + color("YELLOW", f"      --  instruction skip {current_pc:<8X}   "),
+            end=";",
+        )
 
     # Skip one instruction
     # Save and restore CPSR register as Unicorn changes its value
