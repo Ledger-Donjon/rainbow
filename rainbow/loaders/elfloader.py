@@ -19,8 +19,12 @@
 import lief
 
 
-def elfloader(elf_file, emu, verbose=False):
-    """Load an .elf file into emu's memory using LIEF"""
+def elfloader(elf_file, emu, map_virtual_segments=False, verbose=False):
+    """Load an .elf file into emu's memory using LIEF
+
+    If `map_virtual_segments` is True, then segments such as `.bss` will be
+    mapped even if their physical size are zero.
+    """
     elffile = lief.parse(elf_file)
     if verbose:
         print(f"[x] Loading ELF segments...")
@@ -31,12 +35,20 @@ def elfloader(elf_file, emu, verbose=False):
             if segment.type != lief.ELF.SEGMENT_TYPES.LOAD:
                 continue
 
-            emu.map_space(
-                segment.physical_address,
-                segment.physical_address + segment.physical_size,
-                verbose=verbose,
-            )
-            emu.emu.mem_write(segment.physical_address, bytes(segment.content))
+            if map_virtual_segments:
+                emu.map_space(
+                    segment.virtual_address,
+                    segment.virtual_address + segment.virtual_size,
+                    verbose=verbose,
+                )
+                emu.emu.mem_write(segment.virtual_address, bytes(segment.content))
+            else:
+                emu.map_space(
+                    segment.physical_address,
+                    segment.physical_address + segment.physical_size,
+                    verbose=verbose,
+                )
+                emu.emu.mem_write(segment.physical_address, bytes(segment.content))
     else:
         # if there are no segments, still attempt to map .text area
         section = elffile.get_section(".text")

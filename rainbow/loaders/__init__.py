@@ -24,10 +24,10 @@ from .peloader import peloader
 LOADERS = {".hex": hexloader, ".elf": elfloader, ".so": elfloader, ".exe": peloader}
 
 
-def load_selector(filename, rainbow_instance, typ=None, entrypoint=None, verbose=False):
+def load_selector(filename, rainbow_instance, typ=None, *args, **kwargs):
     if typ is None:
         ext = os.path.splitext(filename)[1]
         loader = LOADERS[ext]
     else:
         loader = LOADERS[typ]
-    return loader(filename, rainbow_instance, verbose=verbose)
+    return loader(filename, rainbow_instance, *args, **kwargs)
