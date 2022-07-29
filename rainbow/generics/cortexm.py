@@ -1,4 +1,4 @@
-# This file is part of rainbow 
+# This file is part of rainbow
 #
 # rainbow is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -71,7 +71,7 @@ class rainbow_cortexm(rainbowBase):
 
         # TODO: handle other software-triggered exceptions (like bkpt)
         self['pc'] = self.functions["SVC_Handler"] | 1
-        return False 
+        return False
 
     def start(self, begin, *args, **kwargs):
         return super().start(begin | 1, *args, **kwargs)
@@ -96,6 +96,6 @@ class rainbow_cortexm(rainbowBase):
             self['sp'] = sp + 32
             return True
 
-        # In a Cortex M, all code is in thumb mode
+        # In ARM Cortex-M, all code is in thumb mode
         # So all function addresses are odd
-        self.base_block_handler(address | 1)
+        super().block_handler(uci, address | 1, size, user_data)
