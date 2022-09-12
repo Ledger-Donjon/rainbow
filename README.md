@@ -10,6 +10,8 @@ This is to allow quick and easy testing of physical attack resistance of code sn
 
 An introduction is available [here](https://medium.com/ledger-on-security-and-blockchain/introducing-rainbow-donjons-side-channel-analysis-simulation-tool-2f23fa1f11b3).
 
+A blogpost demonstrating how to turn this tool into an automatic fault injection test pipeline is [here](https://blog.ledger.com/fault-injection-simulation/), with the corresponding Rust code [here](https://github.com/Ledger-Donjon/fault_injection_checks_demo/).
+
 ## Installation
 
 You will need Python 3.7 at least.
