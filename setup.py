@@ -21,7 +21,7 @@ from setuptools import setup, find_packages
 setup(
     name="rainbow",
     install_requires=[
-        "unicorn~=1.0",
+        "unicorn>=2.0.1",
         "capstone>=4.0.0",
         "lief>=0.10.0",
         "intelhex",
