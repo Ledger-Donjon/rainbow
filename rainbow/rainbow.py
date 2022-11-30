@@ -91,10 +91,6 @@ class rainbowBase:
         self.sca_HD = sca_HD
 
     def __del__(self):
-        # Unmap all memory regions.
-        for start, end, _ in self.emu.mem_regions():
-            self.emu.mem_unmap(start, end - start + 1)
-
         # Calling colorama.init too many times without deinit may cause issues
         colorama.deinit()
 
