@@ -54,6 +54,12 @@ class rainbow_cortexm(Rainbow):
         self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
 
     def intr_hook(self, uci, intno, data):
+        # Handle ARM MMU exceptions introduced in Unicorn 2
+        # See https://github.com/unicorn-engine/unicorn/issues/1650
+        if intno == 3:
+            self.emu.emu_stop()
+            return
+
         # Hack : pretend this is all exceptions at once
         self['ipsr'] = 0xfffffff
 
