@@ -33,6 +33,11 @@ from .loaders import load_selector
 from .tracers import regs_hd_sum_trace, regs_hw_sum_trace
 
 
+# Identity function
+def _identity(x):
+    return x
+
+
 class HookWeakMethod:
     """
     Class to pass instance method callbacks to unicorn with weak referencing to
@@ -440,51 +445,75 @@ class rainbowBase:
                 adr, size, ins, op_str = self.disassemble_single(address, size)
                 self.print_asmline(adr, ins, op_str)
 
-    def hook_prolog(self, name, fn):
-        """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn, execution resumes into 'name' """
-        if name not in self.functions.keys():
-            raise IndexError(f"'{name}' could not be found.")
+    def hook_prolog(self, id, fn: Callable) -> None:
+        """Insert Python function `fn` before all functions identified by `id`
+
+        `id` can be an address or a function name.
+        """
 
         def to_hook(x):
             fn(x)
             return False
 
-        self.stubbed_functions[name] = to_hook
+        if isinstance(id, str):
+            addrs = [a for a, n in self.function_names.items() if n == id]
+            if not addrs:
+                raise IndexError(f"'{id}' could not be found.")
+            for addr in addrs:
+                self.stubbed_functions[addr] = to_hook
+        elif isinstance(id, int):
+            self.stubbed_functions[id] = to_hook
+        else:
+            raise TypeError("id should be function name or address")
 
-    def hook_bypass(self, name, fn=None):
-        """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn', execution returns to the caller """
-        if name not in self.functions.keys():
-            raise IndexError(f"'{name}' could not be found.")
+    def hook_bypass(self, id, fn: Callable = _identity) -> None:
+        """Replace all functions identified by `id` with Python function 'fn'
 
-        if fn is None:
-            fn = lambda x:x
+        Return to caller after 'fn'.
+        `id` can be an address or a function name.
+        `fn` can be None to skip function execution.
+        """
 
         def to_hook(x):
             fn(x)
             return True
 
-        self.stubbed_functions[name] = to_hook
+        if isinstance(id, str):
+            addrs = [a for a, n in self.function_names.items() if n == id]
+            if not addrs:
+                raise IndexError(f"'{id}' could not be found.")
+            for addr in addrs:
+                self.stubbed_functions[addr] = to_hook
+        elif isinstance(id, int):
+            self.stubbed_functions[id] = to_hook
+        else:
+            raise TypeError("id should be function name or address")
 
-    def return_force(self):
-        """ Performs a simulated function return """
+    def return_force(self) -> None:
+        """Performs a simulated function return"""
         raise NotImplementedError
 
-    def block_handler(self, _uci, address: int, _size, _user_data):
-        """
-        Hook called on every jump to a basic block that checks if a known
-        address+function is redefined in the user's python script and if so,
-        calls that instead
-        """
-        if address in self.function_names.keys():
-            f = self.function_names[address]
-            if self.function_calls:
-                print(f"\n[{self.profile_counter:>8} ins]   {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
-                self.profile_counter = 0
+    def block_handler(self, _uci, address: int, _size, _user_data) -> None:
+        """Hook called on every jump to a basic block
 
-            if f in self.stubbed_functions:
-                r = self.stubbed_functions[f](self)
-                if r:
-                    self.return_force()
+        Print called function name if self.function_calls is True.
+        Handle hooked functions.
+        """
+        # Print function calls
+        if self.function_calls and address in self.function_names:
+            f = self.function_names[address]
+            print(
+                f"\n[{self.profile_counter:>8} ins]   {color('MAGENTA',f)}(...) @ 0x{address:x}",
+                end=" ",
+            )
+            self.profile_counter = 0
+
+        # If stub is set at this address, run it
+        stub_func = self.stubbed_functions.get(address)
+        if stub_func is not None:
+            if stub_func(self):
+                # If stub returns True, then make the function return early
+                self.return_force()
 
     def load_other_regs_from_pickle(self, filename):
         """
