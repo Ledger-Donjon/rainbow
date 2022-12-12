@@ -19,7 +19,6 @@
 import unicorn as uc
 import capstone as cs
 from rainbow.rainbow import rainbowBase
-from rainbow.color_functions import color
 
 
 class rainbow_m68k(rainbowBase):

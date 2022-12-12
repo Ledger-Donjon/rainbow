@@ -20,9 +20,9 @@
 import functools
 import math
 import weakref
+import os
 from typing import Callable, Tuple
 import capstone as cs
-import colorama
 import unicorn as uc
 from pygments import highlight
 from pygments.formatters import TerminalFormatter as formatter
@@ -83,16 +83,14 @@ class rainbowBase:
         self.asm_hl = NasmLexer()
         self.asm_fmt = formatter(outencoding="utf-8")
 
-        colorama.init()
+        # Enable ANSI mode on Windows
+        if os.name == "nt":
+            os.system("")
 
         self.trace_reset()
 
         # Take into account another leakage model
         self.sca_HD = sca_HD
-
-    def __del__(self):
-        # Calling colorama.init too many times without deinit may cause issues
-        colorama.deinit()
 
     def trace_reset(self):
         self.reg_leak = None

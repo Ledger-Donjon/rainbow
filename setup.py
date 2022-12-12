@@ -25,7 +25,6 @@ setup(
         "capstone>=4.0.0",
         "lief>=0.10.0",
         "intelhex",
-        "colorama",
         "pygments",
     ],
     packages=find_packages(),
