@@ -67,6 +67,7 @@ class Rainbow:
     profile_counter: int  # TODO: Consider removing.
 
     # Arch. constants
+    WORD_SIZE: int
     OTHER_REGS: Dict[str, int]
     OTHER_REGS_NAMES: Dict[int, str]
 
@@ -213,7 +214,7 @@ class Rainbow:
         if isinstance(inp, str):  # regname
             v = self.OTHER_REGS_NAMES.get(inp, None)
             if v is not None:
-                ret = self.emu.mem_write(v, val.to_bytes(self.word_size, self.endianness))
+                ret = self.emu.mem_write(v, val.to_bytes(self.WORD_SIZE, self.endianness))
             else:
                 ret = self.emu.reg_write(self.reg_map[inp], val)
         elif isinstance(inp, int):
@@ -240,7 +241,7 @@ class Rainbow:
             if s & 3:
                 size = 1
             else:
-                size = self.word_size
+                size = self.WORD_SIZE
             return self.emu.mem_read(s, size)
         if isinstance(s, slice):
             return self.emu.mem_read(s.start, s.stop - s.start)

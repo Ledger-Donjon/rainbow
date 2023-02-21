@@ -33,7 +33,7 @@ class rainbow_x86(Rainbow):
         self.emu = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_32)
         self.disasm = cs.Cs(cs.CS_ARCH_X86, cs.CS_MODE_32)
         self.disasm.detail = True
-        self.word_size = 4
+        self.WORD_SIZE = 4
         self.endianness = "little"
         self.pc = uc.x86_const.UC_X86_REG_EIP
 
@@ -50,5 +50,5 @@ class rainbow_x86(Rainbow):
 
     def return_force(self):
         ret = self[self["esp"]]
-        self["esp"] += self.word_size
+        self["esp"] += self.WORD_SIZE
         self["eip"] = int.from_bytes(ret, "little")

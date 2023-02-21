@@ -33,7 +33,7 @@ class rainbow_arm(Rainbow):
         self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM)
         self.disasm.detail = True
-        self.word_size = 4
+        self.WORD_SIZE = 4
         self.endianness = "little"
         self.pc = uc.arm_const.UC_ARM_REG_PC
 

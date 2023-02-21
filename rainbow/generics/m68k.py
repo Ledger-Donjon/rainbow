@@ -33,7 +33,7 @@ class rainbow_m68k(Rainbow):
         self.emu = uc.Uc(uc.UC_ARCH_M68K, uc.UC_MODE_BIG_ENDIAN)
         self.disasm = cs.Cs(cs.CS_ARCH_M68K, cs.CS_MODE_M68K_000)
         self.disasm.detail = True
-        self.word_size = 4
+        self.WORD_SIZE = 4
         self.endianness = "big"
         self.pc = uc.m68k_const.UC_M68K_REG_PC
 
@@ -49,5 +49,5 @@ class rainbow_m68k(Rainbow):
 
     def return_force(self):
         ret = self[self["a7"]]
-        self["a7"] += self.word_size
+        self["a7"] += self.WORD_SIZE
         self["pc"] = int.from_bytes(ret, "big")
