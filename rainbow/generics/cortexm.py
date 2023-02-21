@@ -20,7 +20,6 @@ import unicorn as uc
 import capstone as cs
 from struct import unpack
 from rainbow.rainbow import rainbowBase, HookWeakMethod
-from rainbow.color_functions import color
 
 
 class rainbow_cortexm(rainbowBase):

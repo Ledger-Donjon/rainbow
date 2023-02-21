@@ -25,10 +25,10 @@ import capstone as cs
 import colorama
 import unicorn as uc
 from pygments import highlight
-from pygments.formatters import TerminalFormatter as formatter
-from pygments.lexers import NasmLexer
+from pygments.formatters.terminal import TerminalFormatter
+from pygments.lexers.asm import NasmLexer
 
-from .color_functions import color
+from .utils.color_functions import color
 from .loaders import load_selector
 from .tracers import regs_hd_sum_trace, regs_hw_sum_trace
 
@@ -45,6 +45,7 @@ class HookWeakMethod:
     the method, but returns it. This class does call the method when __call__
     is executed.
     """
+
     def __init__(self, method):
         self.method = weakref.WeakMethod(method)
 
@@ -53,10 +54,9 @@ class HookWeakMethod:
 
 
 class rainbowBase:
-
     """ Emulation base class """
 
-    def __init__(self, trace=True, sca_mode=False,sca_HD=False):
+    def __init__(self, trace=True, sca_mode=False, sca_HD=False):
         self.breakpoints = []
         self.skips = []
         self.emu = None
@@ -81,7 +81,7 @@ class rainbowBase:
 
         ## Prepare a live disassembler
         self.asm_hl = NasmLexer()
-        self.asm_fmt = formatter(outencoding="utf-8")
+        self.asm_fmt = TerminalFormatter(outencoding="utf-8")
 
         colorama.init()
 
@@ -134,7 +134,7 @@ class rainbowBase:
         if any(map(lambda x: start >= x[0] and end <= x[1], regions)):
             if verbose:
                 print(
-                    f"[*] Did not map 0x{start:X},0x{end-start+1:X} as it is already mapped"
+                    f"[*] Did not map 0x{start:X},0x{end - start + 1:X} as it is already mapped"
                 )
             return
 
@@ -147,7 +147,7 @@ class rainbowBase:
         # Ceil align end address
         if (end + 1) & (self.page_size - 1):
             end = (
-                (((end + 1) >> self.page_shift) << self.page_shift) + self.page_size - 1
+                    (((end + 1) >> self.page_shift) << self.page_shift) + self.page_size - 1
             )
 
         # List of overlapping or adjacent regions which must be merged.
@@ -191,7 +191,7 @@ class rainbowBase:
 
         ## convert value
         if isinstance(val, int):
-            if val==0:
+            if val == 0:
                 length = 1
                 value = bytes(1)
             else:
@@ -203,7 +203,7 @@ class rainbowBase:
         else:
             raise Exception("Unhandled value type", type(val))
 
-        ret = None 
+        ret = None
         if isinstance(inp, str):  # regname
             v = self.OTHER_REGS_NAMES.get(inp, None)
             if v is not None:
@@ -218,7 +218,7 @@ class rainbowBase:
                 return NotImplementedError
             self.map_space(inp.start, inp.stop)
             v = val.to_bytes(length, self.endianness)
-            ret = self.emu.mem_write(inp.start, v*(inp.stop-inp.start))
+            ret = self.emu.mem_write(inp.start, v * (inp.stop - inp.start))
         else:
             raise Exception("Invalid range type for write: ", type(inp), inp)
 
@@ -248,7 +248,7 @@ class rainbowBase:
         try:
             # Copy the original registers into the backup before starting the process
             # This is for the Hamming Distance leakage model
-            self.RegistersBackup = [0]*len(self.reg_map)
+            self.RegistersBackup = [0] * len(self.reg_map)
             self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
             self.emu.emu_stop()
@@ -302,22 +302,22 @@ class rainbowBase:
 
         ## Add hooks
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
-            HookWeakMethod(self.block_handler))
+                                            HookWeakMethod(self.block_handler))
         if self.sca_mode:
             if self.sca_HD:
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                    regs_hd_sum_trace, self)
+                                                 regs_hd_sum_trace, self)
             else:
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                    regs_hw_sum_trace, self)
+                                                 regs_hw_sum_trace, self)
             self.tm_hook = self.emu.hook_add(
                 uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
                 HookWeakMethod(self.sca_trace_mem))
         else:
             self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                HookWeakMethod(self.code_trace))
-            self.mem_access_hook = self.emu.hook_add( uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
-                HookWeakMethod(self.trace_mem))
+                                               HookWeakMethod(self.code_trace))
+            self.mem_access_hook = self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                                                     HookWeakMethod(self.trace_mem))
 
     def remove_hooks(self):
         self.emu.hook_del(self.mem_access_hook)
@@ -347,7 +347,7 @@ class rainbowBase:
             if access == uc.UC_MEM_WRITE:
                 self.sca_values_trace.append(value)
             else:
-                self.sca_values_trace.append( int.from_bytes( uci.mem_read(address, size), self.endianness, signed=False))
+                self.sca_values_trace.append(int.from_bytes(uci.mem_read(address, size), self.endianness, signed=False))
 
     def trace_mem(self, uci, access, address, size, value, user_data):
         """ Hook that shows a visual trace of memory accesses in the form '[address written to] <- value written' or 'value read <- [address read]' """
@@ -391,8 +391,8 @@ class rainbowBase:
         """ Pretty-print assembly using pygments syntax highlighting """
         line = (
             highlight(f"{ins:<6}  {op_str:<20}", self.asm_hl, self.asm_fmt)
-            .decode()
-            .strip("\n")
+                .decode()
+                .strip("\n")
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
@@ -414,14 +414,13 @@ class rainbowBase:
                 if s == '':
                     break
                 try:
-                    address = eval("0x"+s.split(" ")[0])
+                    address = eval("0x" + s.split(" ")[0])
                     size = eval(s.split(" ")[1])
-                    print("Addr=%s, size=%d"%(hex(address), size), bytes(self[address:address+size]))
+                    print("Addr=%s, size=%d" % (hex(address), size), bytes(self[address:address + size]))
                 except Exception as e:
                     print("Error:", e)
                     print("Usage: type \"DEAD0000 32\" for instance")
                     continue
-
 
         if self.trace:
             if self.reg_leak is not None:
@@ -457,7 +456,7 @@ class rainbowBase:
             raise IndexError(f"'{name}' could not be found.")
 
         if fn is None:
-            fn = lambda x:x
+            fn = lambda x: x
 
         def to_hook(x):
             fn(x)
@@ -478,7 +477,7 @@ class rainbowBase:
         if address in self.function_names.keys():
             f = self.function_names[address]
             if self.function_calls:
-                print(f"\n[{self.profile_counter:>8} ins]   {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
+                print(f"\n[{self.profile_counter:>8} ins]   {color('MAGENTA', f)}(...) @ 0x{address:x}", end=" ")
                 self.profile_counter = 0
 
             if f in self.stubbed_functions:

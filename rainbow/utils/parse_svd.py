@@ -16,12 +16,12 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree
 
 
 def parse_svd(svdfile):
     """ Parse an .svd file for special register names and addresses into a dictionary """
-    tree = ET.parse(svdfile)
+    tree = ElementTree.parse(svdfile)
     root = tree.getroot()
     names = [e.tag for e in root]
     peripherals = root[names.index("peripherals")]

@@ -25,7 +25,7 @@ nothing.
 """
 
 from .rainbow import rainbowBase
-from .color_functions import color
+from .utils.color_functions import color
 
 
 def fault_skip(emu: rainbowBase):
