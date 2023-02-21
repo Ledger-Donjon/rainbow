@@ -18,7 +18,7 @@
 import abc
 import functools
 import math
-from typing import Callable, Tuple, Optional, List, Dict
+from typing import Callable, Tuple, Optional, List, Dict, Set
 import capstone as cs
 import unicorn as uc
 from pygments import highlight
@@ -37,7 +37,7 @@ class Rainbow(abc.ABC):
     """ Emulation base class """
 
     # Attrs
-    breakpoints: List[int]
+    breakpoints: Set[int]
     emu: Optional[uc.Uc]
     disasm: Optional[cs.Cs]
     reg_backup: List[int]
@@ -65,7 +65,7 @@ class Rainbow(abc.ABC):
     ct_hook: Optional[int]
 
     def __init__(self, trace=True, sca_mode=False, sca_HD=False):
-        self.breakpoints = []
+        self.breakpoints = set()
         self.emu = None
         self.disasm = None
         self.reg_backup = []
@@ -75,7 +75,6 @@ class Rainbow(abc.ABC):
         self.profile_counter = 0
         self.hooks = []
 
-        self.OTHER_REGS = {}
         self.OTHER_REGS = {}
 
         # Tracing properties
@@ -103,11 +102,11 @@ class Rainbow(abc.ABC):
             self.emu.mem_unmap(start, end - start + 1)
 
     @functools.cached_property
-    def PAGE_SIZE(self):
+    def PAGE_SIZE(self) -> int:  # noqa
         return self.emu.query(uc.UC_QUERY_PAGE_SIZE)
 
     @property
-    def PAGE_SHIFT(self) -> int:
+    def PAGE_SHIFT(self) -> int:  # noqa
         return self.PAGE_SIZE.bit_length() - 1
 
     def trace_reset(self):
@@ -306,7 +305,7 @@ class Rainbow(abc.ABC):
 
         # Add hooks
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
-                                            HookWeakMethod(self.block_handler))
+                                            HookWeakMethod(self._block_trace))
         self.hooks.append(self.block_hook)
 
         if self.sca_mode:
@@ -318,31 +317,35 @@ class Rainbow(abc.ABC):
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
                                                  regs_hw_sum_trace, self)
             self.hooks.append(self.ct_hook)
-            self.hooks.append(self.emu.hook_add(
-                uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
-                HookWeakMethod(self.sca_trace_mem)))
+            if self.mem_trace:
+                self.hooks.append(self.emu.hook_add(
+                    uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                    HookWeakMethod(self._sca_trace_mem)))
         else:
             self.hooks.append(self.emu.hook_add(uc.UC_HOOK_CODE,
-                                                HookWeakMethod(self.code_trace)))
-            self.hooks.append(self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
-                                                HookWeakMethod(self.trace_mem)))
+                                                HookWeakMethod(self._code_trace)))
+            if self.mem_trace:
+                self.hooks.append(self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                                                    HookWeakMethod(self._trace_mem)))
 
     def remove_hooks(self):
         for hook in self.hooks:
             self.emu.hook_del(hook)
         self.hooks = []
 
-    def add_bkpt(self, address):
-        if address not in self.breakpoints:
-            self.breakpoints += [address]
+    def remove_bkpt(self, address):
+        self.breakpoints.remove(address)
 
-    def bkpt_dump(self):
-        """ Dumps all regs when a breakpoint is hit """
-        for reg in self.INTERNAL_REGS:
-            print(f"{reg} : {self[reg]:x}")
+    def add_bkpt(self, address):
+        self.breakpoints.add(address)
 
     @abc.abstractmethod
     def reset_stack(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def return_force(self):
+        """ Performs a simulated function return """
         raise NotImplementedError
 
     def reset(self):
@@ -353,28 +356,31 @@ class Rainbow(abc.ABC):
             self[r] = 0
         self.reset_stack()
 
-    def sca_trace_mem(self, uci, access, address, size, value, _):
-        """ Hook that stores memory accesses in side-channel mode. Stores read and written values """
-        if self.mem_trace:
-            if access == uc.UC_MEM_WRITE:
-                self.sca_values_trace.append(value)
-            else:
-                self.sca_values_trace.append(int.from_bytes(uci.mem_read(address, size), self.ENDIANNESS, signed=False))
+    def _sca_trace_mem(self, uci, access, address, size, value, _):
+        """
+        Hook that stores memory accesses in side-channel mode. Stores read and written values.
+        """
+        if access == uc.UC_MEM_WRITE:
+            self.sca_values_trace.append(value)
+        else:
+            self.sca_values_trace.append(int.from_bytes(uci.mem_read(address, size), self.ENDIANNESS, signed=False))
 
-    def trace_mem(self, uci, access, address, size, value, _):
-        """ Hook that shows a visual trace of memory accesses in the form '[address written to] <- value written' or 'value read <- [address read]' """
-        if self.mem_trace:
-            if address in self.OTHER_REGS.keys():
-                addr = self.OTHER_REGS[address]
-            else:
-                addr = color("BLUE", f"0x{address:08x}")
-            if access == uc.UC_MEM_WRITE:
-                val = color("CYAN", f"{value:x}")
-                print(f"  [{addr}] <- {val} ", end=" ")
-            else:
-                val = int.from_bytes(uci.mem_read(address, size), self.ENDIANNESS)
-                val = color("CYAN", f"{val:8x}")
-                print(f"  {val} <- [{addr}]", end=" ")
+    def _trace_mem(self, uci, access, address, size, value, _):
+        """
+        Hook that shows a visual trace of memory accesses in the form
+        '[address written to] <- value written' or 'value read <- [address read]'
+        """
+        if address in self.OTHER_REGS:
+            addr = self.OTHER_REGS[address]
+        else:
+            addr = color("BLUE", f"0x{address:08x}")
+        if access == uc.UC_MEM_WRITE:
+            val = color("CYAN", f"{value:x}")
+            print(f"  [{addr}] <- {val} ", end=" ")
+        else:
+            val = int.from_bytes(uci.mem_read(address, size), self.ENDIANNESS)
+            val = color("CYAN", f"{val:8x}")
+            print(f"  {val} <- [{addr}]", end=" ")
 
     # Least-recently used cache for Capstone calls to disasm or disasm_lite
     @staticmethod
@@ -408,17 +414,20 @@ class Rainbow(abc.ABC):
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
-    def code_trace(self, _uci, address, size, _data):
+    def _code_trace(self, _uci, address, size, _data):
         """
         Hook that traces modified register values in side-channel mode. 
         
-        Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction. 
-        Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction. 
+        Capstone 4's 'regs_access' method is used to find out which registers
+        are explicitly modified by an instruction. Once found, the information
+        is stored in self.reg_leak to be stored at the next instruction, once
+        the unicorn engine actually performed the current instruction.
         """
         self.profile_counter += 1
         if address in self.breakpoints:
             print(f"\n*** Breakpoint hit at 0x{address:x} ***")
-            self.bkpt_dump()
+            for reg in self.INTERNAL_REGS:
+                print(f"{reg} : {self[reg]:x}")
 
             while True:
                 s = input("Press Enter to continue, or Input an address and a size to display an address: ")
@@ -452,7 +461,10 @@ class Rainbow(abc.ABC):
                 self.print_asmline(adr, ins, op_str)
 
     def hook_prolog(self, name, fn):
-        """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn, execution resumes into 'name' """
+        """
+        Add a call to function 'fn' when 'name' is called during execution.
+        After executing 'fn, execution resumes into 'name'.
+        """
         if name not in self.functions.keys():
             raise IndexError(f"'{name}' could not be found.")
 
@@ -464,7 +476,10 @@ class Rainbow(abc.ABC):
         self.stubbed_functions[name] = to_hook
 
     def hook_bypass(self, name, fn=None):
-        """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn', execution returns to the caller """
+        """
+        Add a call to function 'fn' when 'name' is called during execution.
+        After executing 'fn', execution returns to the caller.
+        """
         if name not in self.functions.keys():
             raise IndexError(f"'{name}' could not be found.")
 
@@ -475,12 +490,9 @@ class Rainbow(abc.ABC):
 
         self.stubbed_functions[name] = to_hook
 
-    @abc.abstractmethod
-    def return_force(self):
-        """ Performs a simulated function return """
-        raise NotImplementedError
 
-    def block_handler(self, _uci, address: int, _size, _user_data):
+
+    def _block_trace(self, _uci, address: int, _size, _user_data):
         """
         Hook called on every jump to a basic block that checks if a known
         address+function is redefined in the user's python script and if so,
@@ -496,12 +508,3 @@ class Rainbow(abc.ABC):
                 r = self.stubbed_functions[f](self)
                 if r:
                     self.return_force()
-
-    def load_other_regs_from_pickle(self, filename):
-        """
-        Load OTHER_REGS from a dictionary in a pickle file.
-        :param filename: pickle file path.
-        """
-        import pickle
-        with open(filename, 'rb') as f:
-            self.OTHER_REGS = pickle.load(f)

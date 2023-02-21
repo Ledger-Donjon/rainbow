@@ -19,9 +19,11 @@ e = rainbow_stm32(sca_mode=True)
 e.load("trezor.elf")
 e.trace = 0
 
+
 def result(u):
-  """ Test whether execution was faulted """
-  return u['r0'] != 0 and u['pc'] == 0xaaaaaaaa
+    """ Test whether execution was faulted """
+    return u['r0'] != 0 and u['pc'] == 0xaaaaaaaa
+
 
 # as in the side-channel example, this is the location of the reference
 # pin in Flash
@@ -50,17 +52,17 @@ for i in range(1, N):
     e['lr'] = 0xaaaaaaaa
 
     try:
-      # Run i instructions, then inject skip, then run
-      pc = e.start_and_fault(fault_skip, i, e.functions['storage_containsPin'], 0xaaaaaaaa, count=100)
+        # Run i instructions, then inject skip, then run
+        pc = e.start_and_fault(fault_skip, i, e.functions['storage_containsPin'], 0xaaaaaaaa, count=100)
     except RuntimeError:
-      # Fault crashed the emulation
-      total_crashes += 1
-      crash_trace[i] = 1
-      d = e.disassemble_single(pc, 4)
-      e.print_asmline(pc, d[2], d[3])
-      pc += d[1]
-      print("crashed")
-      continue
+        # Fault crashed the emulation
+        total_crashes += 1
+        crash_trace[i] = 1
+        d = e.disassemble_single(pc, 4)
+        e.print_asmline(pc, d[2], d[3])
+        pc += d[1]
+        print("crashed")
+        continue
 
     # Print current instruction
     d = e.disassemble_single(pc, 4)
@@ -68,10 +70,10 @@ for i in range(1, N):
     pc += d[1]
 
     if result(e):
-      # Successful fault
-      total_faults += 1
-      fault_trace[i] = 1
-      print(" <-- r0 =", hex(e['r0']), end="")
+        # Successful fault
+        total_faults += 1
+        fault_trace[i] = 1
+        print(" <-- r0 =", hex(e['r0']), end="")
 
 print(f"\n=== {total_faults} faults found ===")
 print(f"=== {total_crashes} crashes ===")

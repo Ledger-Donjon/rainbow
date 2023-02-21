@@ -27,6 +27,7 @@ setup(
         "intelhex",
         "colorama",
         "pygments",
+        "numpy",
         "PyQt5",
         "visplot"
     ],

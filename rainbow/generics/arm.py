@@ -55,7 +55,7 @@ class rainbow_arm(Rainbow):
     def return_force(self):
         self["pc"] = self["lr"]
 
-    def block_handler(self, uci, address, size, user_data):
+    def _block_trace(self, uci, address, size, user_data):
         # Thumb execution state bit is bit 5 in CPSR
         thumb_bit = (self["cpsr"]>>5) & 1
         if thumb_bit == 0:
@@ -64,4 +64,4 @@ class rainbow_arm(Rainbow):
         else:
             self.disasm.mode = cs.CS_MODE_THUMB
 
-        super().block_handler(uci, address | thumb_bit, size, user_data)
+        super()._block_trace(uci, address | thumb_bit, size, user_data)
