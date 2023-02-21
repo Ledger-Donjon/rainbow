@@ -43,7 +43,6 @@ class Rainbow(abc.ABC):
     reg_backup: List[int]
     functions: Dict[str, int]
     function_names: Dict[int, str]
-    profile_counter: int  # TODO: Consider removing.
     hooks: List[int]
 
     # Arch. constants
@@ -72,7 +71,6 @@ class Rainbow(abc.ABC):
         self.functions = {}
         self.function_names = {}
         self.stubbed_functions = {}
-        self.profile_counter = 0
         self.hooks = []
 
         self.OTHER_REGS = {}
@@ -108,11 +106,6 @@ class Rainbow(abc.ABC):
     @property
     def PAGE_SHIFT(self) -> int:  # noqa
         return self.PAGE_SIZE.bit_length() - 1
-
-    def trace_reset(self):
-        self.reg_leak = None
-        self.sca_address_trace = []
-        self.sca_values_trace = []
 
     def map_space(self, start: int, end: int, verbose: bool = False):
         """
@@ -343,6 +336,15 @@ class Rainbow(abc.ABC):
     def reset_stack(self):
         raise NotImplementedError
 
+    def reset_regs(self):
+        for r in self.INTERNAL_REGS:
+            self[r] = 0
+
+    def reset_trace(self):
+        self.reg_leak = None
+        self.sca_address_trace = []
+        self.sca_values_trace = []
+
     @abc.abstractmethod
     def return_force(self):
         """ Performs a simulated function return """
@@ -350,10 +352,8 @@ class Rainbow(abc.ABC):
 
     def reset(self):
         """ Reset side-channel trace, zeroize registers and reset stack """
-        if self.sca_mode:
-            self.trace_reset()
-        for r in self.INTERNAL_REGS:
-            self[r] = 0
+        self.reset_trace()
+        self.reset_regs()
         self.reset_stack()
 
     def _sca_trace_mem(self, uci, access, address, size, value, _):
@@ -423,7 +423,6 @@ class Rainbow(abc.ABC):
         is stored in self.reg_leak to be stored at the next instruction, once
         the unicorn engine actually performed the current instruction.
         """
-        self.profile_counter += 1
         if address in self.breakpoints:
             print(f"\n*** Breakpoint hit at 0x{address:x} ***")
             for reg in self.INTERNAL_REGS:
@@ -490,8 +489,6 @@ class Rainbow(abc.ABC):
 
         self.stubbed_functions[name] = to_hook
 
-
-
     def _block_trace(self, _uci, address: int, _size, _user_data):
         """
         Hook called on every jump to a basic block that checks if a known
@@ -501,8 +498,7 @@ class Rainbow(abc.ABC):
         if address in self.function_names.keys():
             f = self.function_names[address]
             if self.function_calls:
-                print(f"\n[{self.profile_counter:>8} ins]   {color('MAGENTA', f)}(...) @ 0x{address:x}", end=" ")
-                self.profile_counter = 0
+                print(f"\n {color('MAGENTA', f)}(...) @ 0x{address:x}", end=" ")
 
             if f in self.stubbed_functions:
                 r = self.stubbed_functions[f](self)

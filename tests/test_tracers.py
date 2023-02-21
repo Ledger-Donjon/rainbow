@@ -26,7 +26,7 @@ def test_regs_tracer(regs_tracer):
     # AES_128_keyschedule(key, rk+16)
     emu["r0"] = key_addr
     emu["r1"] = rk_addr + 16
-    emu.trace_reset()
+    emu.reset_trace()
     emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
     assert len(emu.sca_values_trace) > 0
 
@@ -51,7 +51,7 @@ def test_regs_tracer_discard(regs_tracer):
     # AES_128_keyschedule(key, rk+16)
     emu["r0"] = key_addr
     emu["r1"] = rk_addr + 16
-    emu.trace_reset()
+    emu.reset_trace()
     emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
     assert len(emu.sca_values_trace) > 0
     trace1 = emu.sca_values_trace
@@ -60,7 +60,7 @@ def test_regs_tracer_discard(regs_tracer):
     emu.TRACE_DISCARD = ["r0", "r1", "r2", "r3", "r4"]
     emu["r0"] = key_addr
     emu["r1"] = rk_addr + 16
-    emu.trace_reset()
+    emu.reset_trace()
     emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
     assert len(emu.sca_values_trace) > 0
     trace2 = emu.sca_values_trace

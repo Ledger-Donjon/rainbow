@@ -7,7 +7,6 @@ import lascar
 import numpy as np
 from lascar.tools.aes import sbox
 from rainbow.generics import rainbow_arm
-from rainbow.utils import hw
 from visplot import plot
 
 
@@ -44,16 +43,17 @@ def aes_encrypt(key, plaintext):
     # ciphertext = e[buf_out:buf_out+16]
 
     # Hamming weight + noise to pretend we're on a real target
-    trace = np.array([hw(i) for i in e.sca_values_trace]) + np.random.normal(
+    trace = np.array([i for i in e.sca_values_trace]) + np.random.normal(
         0, 1.0, (len(e.sca_values_trace))
     )
     return trace
 
+
 class CortexMAesContainer(lascar.AbstractContainer):
 
-    def generate_trace(self,idx):
-        plaintext = np.random.randint(0,256,(16,),np.uint8)
-        leakage = np.array(aes_encrypt(KEY, plaintext.tobytes())) 
+    def generate_trace(self, idx):
+        plaintext = np.random.randint(0, 256, (16,), np.uint8)
+        leakage = np.array(aes_encrypt(KEY, plaintext.tobytes()))
         return lascar.Trace(leakage, plaintext)
 
 
@@ -63,10 +63,12 @@ KEY = bytes(range(16))
 container = CortexMAesContainer(N)
 plot(container[:5].leakages)
 
-cpa_engines = [lascar.CpaEngine(f'cpa{i}',lambda plaintext, key_byte, index=i: sbox[plaintext[index]^key_byte], range(256)) for i in range(16)]
+cpa_engines = [
+    lascar.CpaEngine(f'cpa{i}', lambda plaintext, key_byte, index=i: sbox[plaintext[index] ^ key_byte], range(256)) for
+    i in range(16)]
 s = lascar.Session(CortexMAesContainer(N), engines=cpa_engines, name="lascar CPA").run()
 
-key = bytes([  engine.finalize().max(1).argmax() for engine in cpa_engines])
+key = bytes([engine.finalize().max(1).argmax() for engine in cpa_engines])
 print("Key is :", hexlify(key).upper())
 
 # Let's draw one result

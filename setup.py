@@ -27,6 +27,8 @@ setup(
         "intelhex",
         "colorama",
         "pygments",
+        "lascar",
+        "pycryptodome",
         "numpy",
         "PyQt5",
         "visplot"

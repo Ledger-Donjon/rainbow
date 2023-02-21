@@ -31,7 +31,7 @@ def main_func(inputt):
 
     # Resets the leakage trace
     e.reset()
-    e.trace_reset()
+    e.reset_trace()
 
     inp = iter(unhexlify(inputt))
 
