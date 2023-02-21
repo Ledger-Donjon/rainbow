@@ -19,7 +19,8 @@
 import unicorn as uc
 import capstone as cs
 from struct import unpack
-from rainbow.rainbow import Rainbow, HookWeakMethod
+from rainbow.rainbow import Rainbow
+from rainbow.utils import HookWeakMethod
 
 
 class rainbow_cortexm(Rainbow):

@@ -76,7 +76,7 @@ class rainbow_stm32f215(rainbow_stm32):
 
     def setup_step(self):
         # Load register dictionary dumped from SVD file
-        if not self.OTHER_REGS_NAMES:
+        if not self.OTHER_REGS:
             with importlib.resources.path(__package__, "stm32f215.pickle") as p:
                 self.load_other_regs_from_pickle(p)
 

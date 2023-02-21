@@ -15,11 +15,9 @@
 #
 #
 # Copyright 2019 Victor Servant, Ledger SAS
-
-
+import abc
 import functools
 import math
-import weakref
 from typing import Callable, Tuple, Optional, List, Dict
 import capstone as cs
 import unicorn as uc
@@ -27,76 +25,66 @@ from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.asm import NasmLexer
 # TODO: Add note about colorama use. Call init in example code.
-from .utils import region_intersects
+from unicorn import UcError
+
+from .utils import region_intersects, HookWeakMethod
 from .utils.color_functions import color
 from .loaders import load_selector
 from .tracers import regs_hd_sum_trace, regs_hw_sum_trace
 
 
-class HookWeakMethod:
-    """
-    Class to pass instance method callbacks to unicorn with weak referencing to
-    prevent circular dependencies.
-
-    Circular dependencies blocks the GC to clean the Rainbow at the correct
-    time, and this causes memory troubles...
-
-    We cannot use directly weakref.WeakMethod since __call__ does not execute
-    the method, but returns it. This class does call the method when __call__
-    is executed.
-    """
-
-    def __init__(self, method):
-        self.method = weakref.WeakMethod(method)
-
-    def __call__(self, *args, **kwargs):
-        self.method()(*args, **kwargs)
-
-
-class Rainbow:
+class Rainbow(abc.ABC):
     """ Emulation base class """
 
     # Attrs
     breakpoints: List[int]
     emu: Optional[uc.Uc]
     disasm: Optional[cs.Cs]
-
+    reg_backup: List[int]
     functions: Dict[str, int]
     function_names: Dict[int, str]
-
     profile_counter: int  # TODO: Consider removing.
+    hooks: List[int]
 
     # Arch. constants
     WORD_SIZE: int
     REGS: Dict[str, int]
-    OTHER_REGS: Dict[int, str]
-    OTHER_REGS_NAMES: Dict[str, int]
+    OTHER_REGS: Dict[str, int]
     INTERNAL_REGS: List[str]
     STACK_ADDR: int
     STACK: Tuple[int, int]
     ENDIANNESS: str
     PC: int
+    # TODO: Trace discard handling. Class attr vs dynamic stuff.
 
+    reg_leak: Optional[Tuple[int, List[int]]]  # TODO: Consider changing.
     sca_address_trace: List[int]
     sca_values_trace: List[int]
+
+    block_hook: Optional[int]
+    ct_hook: Optional[int]
 
     def __init__(self, trace=True, sca_mode=False, sca_HD=False):
         self.breakpoints = []
         self.emu = None
         self.disasm = None
+        self.reg_backup = []
         self.functions = {}
         self.function_names = {}
         self.stubbed_functions = {}
         self.profile_counter = 0
+        self.hooks = []
 
         self.OTHER_REGS = {}
-        self.OTHER_REGS_NAMES = {}
+        self.OTHER_REGS = {}
 
         # Tracing properties
         self.trace = trace
         self.mem_trace = False
         self.function_calls = False
         self.trace_regs = False
+
+        # Leak storage
         self.reg_leak = None
         self.sca_address_trace = []
         self.sca_values_trace = []
@@ -127,7 +115,7 @@ class Rainbow:
         self.sca_address_trace = []
         self.sca_values_trace = []
 
-    def map_space(self, start, end, verbose=False):
+    def map_space(self, start: int, end: int, verbose: bool = False):
         """
         Maps area into the unicorn emulator between start and end, or nothing if it was already mapped.
         Only completes missing portions if there is overlapping with a previously-mapped segment
@@ -136,6 +124,7 @@ class Rainbow:
 
         :param start: Region start address, included.
         :param end: Region end address, included.
+        :param verbose: Whether to print mapping info.
         """
         if end < start:
             raise ValueError("Invalid region")
@@ -174,14 +163,18 @@ class Rainbow:
                 start = min(start, r_start)
                 end = max(end, r_end)
 
-        assert start & (self.PAGE_SIZE - 1) == 0
-        assert (end + 1) & (self.PAGE_SIZE - 1) == 0
+        if start & (self.PAGE_SIZE - 1) != 0:
+            raise ValueError("Invalid region start.")
+        if (end + 1) & (self.PAGE_SIZE - 1) != 0:
+            raise ValueError("Invalid region end.")
 
         if verbose:
             print(f"[*] Mapping 0x{start:X}-0x{end:X}")
-        ret = self.emu.mem_map(start, end - start + 1)
-        if ret is not None:
-            raise Exception(ret)
+
+        try:
+            self.emu.mem_map(start, end - start + 1)
+        except UcError as e:
+            raise ValueError from e
 
         # Restore data of merged regions which have been unmapped
         for r_start, data in overlaps:
@@ -215,29 +208,28 @@ class Rainbow:
         else:
             raise Exception("Unhandled value type", type(val))
 
-        ret = None
         if isinstance(inp, str):  # regname
-            v = self.OTHER_REGS_NAMES.get(inp, None)
+            v = self.OTHER_REGS.get(inp, None)
             if v is not None:
-                ret = self.emu.mem_write(v, val.to_bytes(self.WORD_SIZE, self.ENDIANNESS))
+                self.emu.mem_write(v, val.to_bytes(self.WORD_SIZE, self.ENDIANNESS))
             else:
-                ret = self.emu.reg_write(self.REGS[inp], val)
+                self.emu.reg_write(self.REGS[inp], val)
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
-            ret = self.emu.mem_write(inp, value)
+            self.emu.mem_write(inp, value)
         elif isinstance(inp, slice):
             if inp.step is not None:
                 return NotImplementedError
             self.map_space(inp.start, inp.stop)
             v = val.to_bytes(length, self.ENDIANNESS)
-            ret = self.emu.mem_write(inp.start, v * (inp.stop - inp.start))
+            self.emu.mem_write(inp.start, v * (inp.stop - inp.start))
         else:
             raise Exception("Invalid range type for write: ", type(inp), inp)
 
     def __getitem__(self, s):
         """ Reads from a register using its shortname, or from a memory address/region. """
         if isinstance(s, str):  # regname
-            v = self.OTHER_REGS_NAMES.get(s, None)
+            v = self.OTHER_REGS.get(s, None)
             if v is not None:
                 return self.emu[v]
             else:
@@ -315,26 +307,30 @@ class Rainbow:
         # Add hooks
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
                                             HookWeakMethod(self.block_handler))
+        self.hooks.append(self.block_hook)
+
         if self.sca_mode:
             if self.sca_HD:
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
                                                  regs_hd_sum_trace, self)
+
             else:
                 self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
                                                  regs_hw_sum_trace, self)
-            self.tm_hook = self.emu.hook_add(
+            self.hooks.append(self.ct_hook)
+            self.hooks.append(self.emu.hook_add(
                 uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
-                HookWeakMethod(self.sca_trace_mem))
+                HookWeakMethod(self.sca_trace_mem)))
         else:
-            self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                                               HookWeakMethod(self.code_trace))
-            self.mem_access_hook = self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
-                                                     HookWeakMethod(self.trace_mem))
+            self.hooks.append(self.emu.hook_add(uc.UC_HOOK_CODE,
+                                                HookWeakMethod(self.code_trace)))
+            self.hooks.append(self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                                                HookWeakMethod(self.trace_mem)))
 
     def remove_hooks(self):
-        self.emu.hook_del(self.mem_access_hook)
-        self.emu.hook_del(self.code_hook)
-        self.emu.hook_del(self.block_hook)
+        for hook in self.hooks:
+            self.emu.hook_del(hook)
+        self.hooks = []
 
     def add_bkpt(self, address):
         if address not in self.breakpoints:
@@ -344,6 +340,10 @@ class Rainbow:
         """ Dumps all regs when a breakpoint is hit """
         for reg in self.INTERNAL_REGS:
             print(f"{reg} : {self[reg]:x}")
+
+    @abc.abstractmethod
+    def reset_stack(self):
+        raise NotImplementedError
 
     def reset(self):
         """ Reset side-channel trace, zeroize registers and reset stack """
@@ -364,8 +364,8 @@ class Rainbow:
     def trace_mem(self, uci, access, address, size, value, _):
         """ Hook that shows a visual trace of memory accesses in the form '[address written to] <- value written' or 'value read <- [address read]' """
         if self.mem_trace:
-            if address in self.OTHER_REGS_NAMES.keys():
-                addr = self.OTHER_REGS_NAMES[address]
+            if address in self.OTHER_REGS.keys():
+                addr = self.OTHER_REGS[address]
             else:
                 addr = color("BLUE", f"0x{address:08x}")
             if access == uc.UC_MEM_WRITE:
@@ -408,8 +408,8 @@ class Rainbow:
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
-    def code_trace(self, uci, address, size, data):
-        """ 
+    def code_trace(self, _uci, address, size, _data):
+        """
         Hook that traces modified register values in side-channel mode. 
         
         Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction. 
@@ -457,7 +457,8 @@ class Rainbow:
             raise IndexError(f"'{name}' could not be found.")
 
         def to_hook(x):
-            fn(x)
+            if fn is not None:
+                fn(x)
             return False
 
         self.stubbed_functions[name] = to_hook
@@ -467,15 +468,14 @@ class Rainbow:
         if name not in self.functions.keys():
             raise IndexError(f"'{name}' could not be found.")
 
-        if fn is None:
-            fn = lambda x: x
-
         def to_hook(x):
-            fn(x)
+            if fn is not None:
+                fn(x)
             return True
 
         self.stubbed_functions[name] = to_hook
 
+    @abc.abstractmethod
     def return_force(self):
         """ Performs a simulated function return """
         raise NotImplementedError
@@ -499,12 +499,9 @@ class Rainbow:
 
     def load_other_regs_from_pickle(self, filename):
         """
-        Load OTHER_REGS and OTHER_REGS_NAMES from a dictionary in a pickle file.
+        Load OTHER_REGS from a dictionary in a pickle file.
         :param filename: pickle file path.
         """
         import pickle
         with open(filename, 'rb') as f:
-            self.OTHER_REGS_NAMES = pickle.load(f)
-        self.OTHER_REGS = {
-            self.OTHER_REGS_NAMES[x]: x for x in self.OTHER_REGS_NAMES.keys()
-        }
+            self.OTHER_REGS = pickle.load(f)
