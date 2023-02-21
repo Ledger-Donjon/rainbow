@@ -16,4 +16,4 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
-from rainbow.rainbow import rainbowBase
+from rainbow.rainbow import Rainbow

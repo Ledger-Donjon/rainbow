@@ -19,10 +19,10 @@
 import unicorn as uc
 import capstone as cs
 from struct import unpack
-from rainbow.rainbow import rainbowBase, HookWeakMethod
+from rainbow.rainbow import Rainbow, HookWeakMethod
 
 
-class rainbow_cortexm(rainbowBase):
+class rainbow_cortexm(Rainbow):
 
     STACK_ADDR = 0x90000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)

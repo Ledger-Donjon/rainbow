@@ -27,6 +27,8 @@ setup(
         "intelhex",
         "colorama",
         "pygments",
+        "PyQt5",
+        "visplot"
     ],
     packages=find_packages(),
     package_data={'': ['*.pickle']},

@@ -24,11 +24,11 @@ argument, then updates the emulator state according to their model and returns
 nothing.
 """
 
-from .rainbow import rainbowBase
+from .rainbow import Rainbow
 from .utils.color_functions import color
 
 
-def fault_skip(emu: rainbowBase):
+def fault_skip(emu: Rainbow):
     """Increase program counter to skip current instruction
 
     Right now this only handles ARM emulation.
@@ -60,7 +60,7 @@ def fault_stuck_at(value: int = 0):
     Right now this only handles ARM emulation.
     """
 
-    def f(emu: rainbowBase):
+    def f(emu: Rainbow):
         # Get registers updated by current instruction
         current_pc = emu["pc"]
         ins = emu.disassemble_single_detailed(current_pc, 4)

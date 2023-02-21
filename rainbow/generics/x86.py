@@ -18,10 +18,10 @@
 
 import unicorn as uc
 import capstone as cs
-from rainbow.rainbow import rainbowBase
+from rainbow.rainbow import Rainbow
 
 
-class rainbow_x86(rainbowBase):
+class rainbow_x86(Rainbow):
 
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)

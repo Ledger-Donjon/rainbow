@@ -38,7 +38,7 @@ class HookWeakMethod:
     Class to pass instance method callbacks to unicorn with weak referencing to
     prevent circular dependencies.
 
-    Circular dependencies blocks the GC to clean the rainbowBase at the correct
+    Circular dependencies blocks the GC to clean the Rainbow at the correct
     time, and this causes memory troubles...
 
     We cannot use directly weakref.WeakMethod since __call__ does not execute
@@ -53,7 +53,7 @@ class HookWeakMethod:
         self.method()(*args, **kwargs)
 
 
-class rainbowBase:
+class Rainbow:
     """ Emulation base class """
 
     def __init__(self, trace=True, sca_mode=False, sca_HD=False):
