@@ -27,18 +27,18 @@ class rainbow_aarch64(Rainbow):
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"x{i}" for i in range(30)]
     TRACE_DISCARD = []
+    WORD_SIZE = 8
+    ENDIANNESS = "little"
+    PC = uc.arm64_const.UC_ARM64_REG_PC
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_ARM64, uc.UC_MODE_ARM)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM64, cs.CS_MODE_ARM)
         self.disasm.detail = True
-        self.WORD_SIZE = 8
-        self.endianness = "little"
-        self.pc = uc.arm64_const.UC_ARM64_REG_PC
 
         known_regs = [i[len('UC_ARM64_REG_'):] for i in dir(uc.arm64_const) if '_REG' in i]
-        self.reg_map = {r.lower(): getattr(uc.arm64_const, 'UC_ARM64_REG_'+r) for r in known_regs}
+        self.REGS = {r.lower(): getattr(uc.arm64_const, 'UC_ARM64_REG_'+r) for r in known_regs}
 
         self.setup()
 

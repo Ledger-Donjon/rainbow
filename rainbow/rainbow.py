@@ -63,13 +63,19 @@ class Rainbow:
 
     functions: Dict[str, int]
     function_names: Dict[int, str]
-    reg_map: Dict[str, int]
+
     profile_counter: int  # TODO: Consider removing.
 
     # Arch. constants
     WORD_SIZE: int
-    OTHER_REGS: Dict[str, int]
-    OTHER_REGS_NAMES: Dict[int, str]
+    REGS: Dict[str, int]
+    OTHER_REGS: Dict[int, str]
+    OTHER_REGS_NAMES: Dict[str, int]
+    INTERNAL_REGS: List[str]
+    STACK_ADDR: int
+    STACK: Tuple[int, int]
+    ENDIANNESS: str
+    PC: int
 
     sca_address_trace: List[int]
     sca_values_trace: List[int]
@@ -81,7 +87,6 @@ class Rainbow:
         self.functions = {}
         self.function_names = {}
         self.stubbed_functions = {}
-        self.reg_map = {}
         self.profile_counter = 0
 
         self.OTHER_REGS = {}
@@ -203,7 +208,7 @@ class Rainbow:
                 value = bytes(1)
             else:
                 length = math.ceil(val.bit_length() / 8)
-                value = val.to_bytes(length, self.endianness)
+                value = val.to_bytes(length, self.ENDIANNESS)
         elif isinstance(val, bytes):
             length = len(val)
             value = val
@@ -214,9 +219,9 @@ class Rainbow:
         if isinstance(inp, str):  # regname
             v = self.OTHER_REGS_NAMES.get(inp, None)
             if v is not None:
-                ret = self.emu.mem_write(v, val.to_bytes(self.WORD_SIZE, self.endianness))
+                ret = self.emu.mem_write(v, val.to_bytes(self.WORD_SIZE, self.ENDIANNESS))
             else:
-                ret = self.emu.reg_write(self.reg_map[inp], val)
+                ret = self.emu.reg_write(self.REGS[inp], val)
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
             ret = self.emu.mem_write(inp, value)
@@ -224,7 +229,7 @@ class Rainbow:
             if inp.step is not None:
                 return NotImplementedError
             self.map_space(inp.start, inp.stop)
-            v = val.to_bytes(length, self.endianness)
+            v = val.to_bytes(length, self.ENDIANNESS)
             ret = self.emu.mem_write(inp.start, v * (inp.stop - inp.start))
         else:
             raise Exception("Invalid range type for write: ", type(inp), inp)
@@ -236,7 +241,7 @@ class Rainbow:
             if v is not None:
                 return self.emu[v]
             else:
-                return self.emu.reg_read(self.reg_map[s])
+                return self.emu.reg_read(self.REGS[s])
         elif isinstance(s, int):
             if s & 3:
                 size = 1
@@ -255,7 +260,7 @@ class Rainbow:
         try:
             # Copy the original registers into the backup before starting the process
             # This is for the Hamming Distance leakage model
-            self.reg_backup = [0] * len(self.reg_map)
+            self.reg_backup = [0] * len(self.REGS)
             self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
             self.emu.emu_stop()
@@ -348,15 +353,15 @@ class Rainbow:
             self[r] = 0
         self.reset_stack()
 
-    def sca_trace_mem(self, uci, access, address, size, value, user_data):
+    def sca_trace_mem(self, uci, access, address, size, value, _):
         """ Hook that stores memory accesses in side-channel mode. Stores read and written values """
         if self.mem_trace:
             if access == uc.UC_MEM_WRITE:
                 self.sca_values_trace.append(value)
             else:
-                self.sca_values_trace.append(int.from_bytes(uci.mem_read(address, size), self.endianness, signed=False))
+                self.sca_values_trace.append(int.from_bytes(uci.mem_read(address, size), self.ENDIANNESS, signed=False))
 
-    def trace_mem(self, uci, access, address, size, value, user_data):
+    def trace_mem(self, uci, access, address, size, value, _):
         """ Hook that shows a visual trace of memory accesses in the form '[address written to] <- value written' or 'value read <- [address read]' """
         if self.mem_trace:
             if address in self.OTHER_REGS_NAMES.keys():
@@ -367,7 +372,7 @@ class Rainbow:
                 val = color("CYAN", f"{value:x}")
                 print(f"  [{addr}] <- {val} ", end=" ")
             else:
-                val = int.from_bytes(uci.mem_read(address, size), self.endianness)
+                val = int.from_bytes(uci.mem_read(address, size), self.ENDIANNESS)
                 val = color("CYAN", f"{val:8x}")
                 print(f"  {val} <- [{addr}]", end=" ")
 

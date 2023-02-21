@@ -27,18 +27,18 @@ class rainbow_m68k(Rainbow):
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"d{i}" for i in range(8)] + [f"a{i}" for i in range(8)] + ["pc"]
     TRACE_DISCARD = []
+    WORD_SIZE = 4
+    ENDIANNESS = "big"
+    PC = uc.m68k_const.UC_M68K_REG_PC
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_M68K, uc.UC_MODE_BIG_ENDIAN)
         self.disasm = cs.Cs(cs.CS_ARCH_M68K, cs.CS_MODE_M68K_000)
         self.disasm.detail = True
-        self.WORD_SIZE = 4
-        self.endianness = "big"
-        self.pc = uc.m68k_const.UC_M68K_REG_PC
 
         known_regs = [i[len('UC_M68K_REG_'):] for i in dir(uc.m68k_const) if '_REG' in i]
-        self.reg_map = {r.lower(): getattr(uc.m68k_const, 'UC_M68K_REG_'+r) for r in known_regs}
+        self.REGS = {r.lower(): getattr(uc.m68k_const, 'UC_M68K_REG_'+r) for r in known_regs}
 
         self.setup()
 

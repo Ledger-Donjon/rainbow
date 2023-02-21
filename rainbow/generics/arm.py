@@ -27,18 +27,18 @@ class rainbow_arm(Rainbow):
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
     TRACE_DISCARD = []
+    WORD_SIZE = 4
+    ENDIANNESS = "little"
+    PC = uc.arm_const.UC_ARM_REG_PC
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM)
         self.disasm.detail = True
-        self.WORD_SIZE = 4
-        self.endianness = "little"
-        self.pc = uc.arm_const.UC_ARM_REG_PC
 
         known_regs = [i[len('UC_ARM_REG_'):] for i in dir(uc.arm_const) if '_REG' in i]
-        self.reg_map = {r.lower(): getattr(uc.arm_const, 'UC_ARM_REG_'+r) for r in known_regs}
+        self.REGS = {r.lower(): getattr(uc.arm_const, 'UC_ARM_REG_'+r) for r in known_regs}
 
         self.setup()
 

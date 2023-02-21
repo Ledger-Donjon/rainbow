@@ -27,21 +27,21 @@ class rainbow_x64(Rainbow):
     STACK = (STACK_ADDR - 0x100000, STACK_ADDR + 32)
     INTERNAL_REGS = ["rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rip"]
     TRACE_DISCARD = ["rflags"]
+    WORD_SIZE = 8
+    ENDIANNESS = "little"
+    PC = uc.x86_const.UC_X86_REG_RIP
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_64)
         self.disasm = cs.Cs(cs.CS_ARCH_X86, cs.CS_MODE_64)
         self.disasm.detail = True
-        self.WORD_SIZE = 8
-        self.endianness = "little"
-        self.pc = uc.x86_const.UC_X86_REG_RIP
 
         # workaround for capstone 4
         uc.x86_const.UC_X86_REG_RFLAGS = uc.x86_const.UC_X86_REG_EFLAGS
 
         known_regs = [i[len('UC_X86_REG_'):] for i in dir(uc.x86_const) if '_REG' in i]
-        self.reg_map = {r.lower(): getattr(uc.x86_const, 'UC_X86_REG_'+r) for r in known_regs}
+        self.REGS = {r.lower(): getattr(uc.x86_const, 'UC_X86_REG_'+r) for r in known_regs}
 
         self.setup()
 
