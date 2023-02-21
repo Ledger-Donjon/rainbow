@@ -35,7 +35,6 @@ class rainbow_x64(Rainbow):
         self.disasm.detail = True
         self.word_size = 8
         self.endianness = "little"
-        self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
         self.pc = uc.x86_const.UC_X86_REG_RIP
 
         # workaround for capstone 4

@@ -36,7 +36,6 @@ class rainbow_cortexm(Rainbow):
         self.disasm.detail = True
         self.word_size = 4
         self.endianness = "little"
-        self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
         self.pc = uc.arm_const.UC_ARM_REG_PC
 
         known_regs = [i[len('UC_ARM_REG_'):] for i in dir(uc.arm_const) if '_REG' in i]

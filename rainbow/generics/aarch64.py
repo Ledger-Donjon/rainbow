@@ -35,7 +35,6 @@ class rainbow_aarch64(Rainbow):
         self.disasm.detail = True
         self.word_size = 8
         self.endianness = "little"
-        self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
         self.pc = uc.arm64_const.UC_ARM64_REG_PC
 
         known_regs = [i[len('UC_ARM64_REG_'):] for i in dir(uc.arm64_const) if '_REG' in i]

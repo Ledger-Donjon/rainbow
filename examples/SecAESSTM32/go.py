@@ -19,7 +19,7 @@ def f_aes(e, key, input_):
     struct_aes_p = 0xcafe0000
     e[struct_aes_p] = 0
     # struct is huge so we need to map another page
-    e[struct_aes_p + e.page_size] = 0
+    e[struct_aes_p + e.PAGE_SIZE] = 0
     e['r1'] = struct_aes_p
 
     # key

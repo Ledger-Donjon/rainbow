@@ -56,16 +56,17 @@ class HookWeakMethod:
 class Rainbow:
     """ Emulation base class """
 
+    # Attrs
     breakpoints: List[int]
     emu: Optional[uc.Uc]
     disasm: Optional[cs.Cs]
-    page_size: int
+
     functions: Dict[str, int]
     function_names: Dict[int, str]
-    reg_map: Dict[str, str]
+    reg_map: Dict[str, int]
     profile_counter: int  # TODO: Consider removing.
 
-    # TODO: Why upper case?
+    # Arch. constants
     OTHER_REGS: Dict[str, int]
     OTHER_REGS_NAMES: Dict[int, str]
 
@@ -76,7 +77,6 @@ class Rainbow:
         self.breakpoints = []
         self.emu = None
         self.disasm = None
-        self.page_size = 0
         self.functions = {}
         self.function_names = {}
         self.stubbed_functions = {}
@@ -108,16 +108,18 @@ class Rainbow:
         for start, end, _ in self.emu.mem_regions():
             self.emu.mem_unmap(start, end - start + 1)
 
+    @functools.cached_property
+    def PAGE_SIZE(self):
+        return self.emu.query(uc.UC_QUERY_PAGE_SIZE)
+
     @property
-    def page_shift(self) -> int:
-        return self.page_size.bit_length() - 1
+    def PAGE_SHIFT(self) -> int:
+        return self.PAGE_SIZE.bit_length() - 1
 
     def trace_reset(self):
         self.reg_leak = None
         self.sca_address_trace = []
         self.sca_values_trace = []
-
-
 
     def map_space(self, start, end, verbose=False):
         """
@@ -146,12 +148,12 @@ class Rainbow:
             return
 
         # Floor align start address
-        start = (start >> self.page_shift) << self.page_shift
+        start = (start >> self.PAGE_SHIFT) << self.PAGE_SHIFT
 
         # Ceil align end address
-        if (end + 1) & (self.page_size - 1):
+        if (end + 1) & (self.PAGE_SIZE - 1):
             end = (
-                    (((end + 1) >> self.page_shift) << self.page_shift) + self.page_size - 1
+                    (((end + 1) >> self.PAGE_SHIFT) << self.PAGE_SHIFT) + self.PAGE_SIZE - 1
             )
 
         # List of overlapping or adjacent regions which must be merged.
@@ -166,8 +168,8 @@ class Rainbow:
                 start = min(start, r_start)
                 end = max(end, r_end)
 
-        assert start & (self.page_size - 1) == 0
-        assert (end + 1) & (self.page_size - 1) == 0
+        assert start & (self.PAGE_SIZE - 1) == 0
+        assert (end + 1) & (self.PAGE_SIZE - 1) == 0
 
         if verbose:
             print(f"[*] Mapping 0x{start:X}-0x{end:X}")
