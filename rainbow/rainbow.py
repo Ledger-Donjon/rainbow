@@ -20,7 +20,7 @@
 import functools
 import math
 import weakref
-from typing import Callable, Tuple, Optional
+from typing import Callable, Tuple, Optional, List
 import capstone as cs
 import colorama
 import unicorn as uc
@@ -56,14 +56,16 @@ class HookWeakMethod:
 class Rainbow:
     """ Emulation base class """
 
+    breakpoints: List[int]
+    emu: Optional[uc.Uc]
+    disasm: Optional[cs.Cs]
+    page_size: int
+
     def __init__(self, trace=True, sca_mode=False, sca_HD=False):
         self.breakpoints = []
-        self.skips = []
         self.emu = None
         self.disasm = None
-        self.uc_reg = None
         self.page_size = 0
-        self.page_shift = 0
         self.functions = {}
         self.function_names = {}
         self.reg_map = {}
@@ -99,6 +101,10 @@ class Rainbow:
 
         # Calling colorama.init too many times without deinit may cause issues
         colorama.deinit()
+
+    @property
+    def page_shift(self) -> int:
+        return self.page_size.bit_length() - 1
 
     def trace_reset(self):
         self.reg_leak = None

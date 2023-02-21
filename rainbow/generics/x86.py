@@ -36,7 +36,6 @@ class rainbow_x86(Rainbow):
         self.word_size = 4
         self.endianness = "little"
         self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
-        self.page_shift = self.page_size.bit_length() - 1
         self.pc = uc.x86_const.UC_X86_REG_EIP
 
         known_regs = [i[len('UC_X86_REG_'):] for i in dir(uc.x86_const) if '_REG' in i]
