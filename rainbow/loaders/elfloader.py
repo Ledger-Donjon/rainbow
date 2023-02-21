@@ -19,7 +19,7 @@
 import lief
 
 
-def elfloader(elf_file, emu, map_virtual_segments=False, verbose=False):
+def elfloader(elf_file, emu, map_virtual_segments=False, verbose=False) -> int:
     """Load an .elf file into emu's memory using LIEF
 
     If `map_virtual_segments` is True, then segments such as `.bss` will be
@@ -83,7 +83,7 @@ def elfloader(elf_file, emu, map_virtual_segments=False, verbose=False):
     except:
         pass
 
-    ## TODO: when the ELF has relocated functions exported, LIEF fails on get_function_address
+    # TODO: when the ELF has relocated functions exported, LIEF fails on get_function_address
     for i in elffile.symbols:
         if i.type == lief.ELF.SYMBOL_TYPES.FUNC:
             try:

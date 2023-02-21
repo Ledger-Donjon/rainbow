@@ -19,7 +19,7 @@
 from intelhex import IntelHex
 
 
-def hexloader(hex_file, emu, verbose=False):
+def hexloader(hex_file, emu, verbose=False) -> None:
     """Load a intel hex file into emu's memory using IntelHex"""
     itx = IntelHex(hex_file)
 
@@ -30,3 +30,5 @@ def hexloader(hex_file, emu, verbose=False):
         data = itx.tobinstr(s_start, s_end - 1)
         emu.map_space(s_start, s_start + len(data), verbose=verbose)
         emu.emu.mem_write(s_start, data)
+
+    return None

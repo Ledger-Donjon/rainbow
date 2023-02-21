@@ -19,7 +19,7 @@
 import lief
 
 
-def peloader(exe_file, emu, verbose=False):
+def peloader(exe_file, emu, verbose=False) -> int:
     """Load a .exe file into emu's memory using LIEF"""
     pefile = lief.parse(exe_file)
     if verbose:
@@ -38,7 +38,7 @@ def peloader(exe_file, emu, verbose=False):
 
     emu.functions = {}
 
-    ## Handle relocations
+    # Handle relocations
     for r in pefile.relocations:
         if r.symbol.is_function:
             if r.symbol.value == 0:

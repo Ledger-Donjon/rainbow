@@ -83,8 +83,8 @@ def regs_hd_sum_trace(uci: uc.Uc, address: int, size: int, rbw):
         for r in regs_written:
             if ins.reg_name(r) in rbw.TRACE_DISCARD:
                 continue
-            v += hw(rbw.RegistersBackup[r] ^ uci.reg_read(r))
-            rbw.RegistersBackup[r] = uci.reg_read(r)
+            v += hw(rbw.reg_backup[r] ^ uci.reg_read(r))
+            rbw.reg_backup[r] = uci.reg_read(r)
 
         rbw.sca_address_trace.append(f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}")
         rbw.sca_values_trace.append(v)

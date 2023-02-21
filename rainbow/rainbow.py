@@ -20,7 +20,7 @@
 import functools
 import math
 import weakref
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Optional
 import capstone as cs
 import colorama
 import unicorn as uc
@@ -63,8 +63,10 @@ class Rainbow:
         self.disasm = None
         self.uc_reg = None
         self.page_size = 0
+        self.page_shift = 0
         self.functions = {}
         self.function_names = {}
+        self.reg_map = {}
         self.profile_counter = 0
 
         self.OTHER_REGS = {}
@@ -79,7 +81,7 @@ class Rainbow:
 
         self.sca_mode = sca_mode
 
-        ## Prepare a live disassembler
+        # Prepare a live disassembler
         self.asm_hl = NasmLexer()
         self.asm_fmt = TerminalFormatter(outencoding="utf-8")
 
@@ -189,7 +191,7 @@ class Rainbow:
           emulator[0x4000:0x4300] = 0
          """
 
-        ## convert value
+        # convert value
         if isinstance(val, int):
             if val == 0:
                 length = 1
@@ -239,7 +241,7 @@ class Rainbow:
         if isinstance(s, slice):
             return self.emu.mem_read(s.start, s.stop - s.start)
 
-    def load(self, filename, *args, **kwargs):
+    def load(self, filename, *args, **kwargs) -> Optional[int]:
         """ Load a file into the emulator's memory """
         return load_selector(filename, self, *args, **kwargs)
 
@@ -248,7 +250,7 @@ class Rainbow:
         try:
             # Copy the original registers into the backup before starting the process
             # This is for the Hamming Distance leakage model
-            self.RegistersBackup = [0] * len(self.reg_map)
+            self.reg_backup = [0] * len(self.reg_map)
             self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
             self.emu.emu_stop()
@@ -297,10 +299,10 @@ class Rainbow:
 
     def setup(self):
         """ Sets up a stack and adds base hooks to the engine """
-        ## Add a stack
+        # Add a stack
         self.map_space(*self.STACK)
 
-        ## Add hooks
+        # Add hooks
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
                                             HookWeakMethod(self.block_handler))
         if self.sca_mode:
