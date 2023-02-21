@@ -20,14 +20,14 @@
 import functools
 import math
 import weakref
-from typing import Callable, Tuple, Optional, List
+from typing import Callable, Tuple, Optional, List, Dict
 import capstone as cs
-import colorama
 import unicorn as uc
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.asm import NasmLexer
-
+# TODO: Add note about colorama use. Call init in example code.
+from .utils import region_intersects
 from .utils.color_functions import color
 from .loaders import load_selector
 from .tracers import regs_hd_sum_trace, regs_hw_sum_trace
@@ -60,6 +60,17 @@ class Rainbow:
     emu: Optional[uc.Uc]
     disasm: Optional[cs.Cs]
     page_size: int
+    functions: Dict[str, int]
+    function_names: Dict[int, str]
+    reg_map: Dict[str, str]
+    profile_counter: int  # TODO: Consider removing.
+
+    # TODO: Why upper case?
+    OTHER_REGS: Dict[str, int]
+    OTHER_REGS_NAMES: Dict[int, str]
+
+    sca_address_trace: List[int]
+    sca_values_trace: List[int]
 
     def __init__(self, trace=True, sca_mode=False, sca_HD=False):
         self.breakpoints = []
@@ -68,6 +79,7 @@ class Rainbow:
         self.page_size = 0
         self.functions = {}
         self.function_names = {}
+        self.stubbed_functions = {}
         self.reg_map = {}
         self.profile_counter = 0
 
@@ -79,28 +91,22 @@ class Rainbow:
         self.mem_trace = False
         self.function_calls = False
         self.trace_regs = False
-        self.stubbed_functions = {}
+        self.reg_leak = None
+        self.sca_address_trace = []
+        self.sca_values_trace = []
 
+        # Take into account another leakage model
+        self.sca_HD = sca_HD
         self.sca_mode = sca_mode
 
         # Prepare a live disassembler
         self.asm_hl = NasmLexer()
         self.asm_fmt = TerminalFormatter(outencoding="utf-8")
 
-        colorama.init()
-
-        self.trace_reset()
-
-        # Take into account another leakage model
-        self.sca_HD = sca_HD
-
     def __del__(self):
         # Unmap all memory regions.
         for start, end, _ in self.emu.mem_regions():
             self.emu.mem_unmap(start, end - start + 1)
-
-        # Calling colorama.init too many times without deinit may cause issues
-        colorama.deinit()
 
     @property
     def page_shift(self) -> int:
@@ -111,17 +117,7 @@ class Rainbow:
         self.sca_address_trace = []
         self.sca_values_trace = []
 
-    def __region_intersects(self, ra: Tuple[int, int], rb: Tuple[int, int]) -> bool:
-        """
-        :return: True if two given regions have non empty intersection.
 
-        :param ra: First region bounds, both start and end included.
-        :param rb: Second region bounds, both start and end included.
-        """
-        assert (ra[1] >= ra[0]) and (rb[1] >= rb[0])
-        u = max(ra[0], rb[0])
-        v = min(ra[1], rb[1])
-        return v >= u
 
     def map_space(self, start, end, verbose=False):
         """
@@ -162,7 +158,7 @@ class Rainbow:
         overlaps: list[Tuple[int, bytes]] = []
         for r_start, r_end, _ in regions:
             # Region [start, end] is augmented for intersection test to detect adjacency.
-            if self.__region_intersects((start - 1, end + 1), (r_start, r_end)):
+            if region_intersects((start - 1, end + 1), (r_start, r_end)):
                 r_size = r_end - r_start + 1
                 data = self.emu.mem_read(r_start, r_size)
                 self.emu.mem_unmap(r_start, r_size)
