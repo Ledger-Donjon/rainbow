@@ -117,8 +117,9 @@ class Rainbow(abc.ABC):
         self.emu = uc.Uc(self.UC_ARCH, self.UC_MODE)
         self.disasm = cs.Cs(self.CS_ARCH, self.CS_MODE)
         self.disasm.detail = True
+        self.map_space(*self.STACK)
 
-        self.setup()
+        #self.setup()
 
         self.reset_stack()
 
@@ -320,11 +321,7 @@ class Rainbow(abc.ABC):
         return pc_fault
 
     def setup(self):
-        """ Sets up a stack and adds base hooks to the engine """
-        # Add a stack
-        self.map_space(*self.STACK)
-
-        # Add hooks
+        """ Adds base hooks to the engine """
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
                                             HookWeakMethod(self._block_trace))
         self.hooks.append(self.block_hook)
@@ -357,20 +354,23 @@ class Rainbow(abc.ABC):
 
     @abc.abstractmethod
     def reset_stack(self):
+        """Reset the stack pointer."""
         raise NotImplementedError
 
     def reset_regs(self):
+        """Reset the state of the internal registers to zero."""
         for r in self.INTERNAL_REGS:
             self[r] = 0
 
     def reset_trace(self):
+        """Reset the traced attributes."""
         self.reg_leak = None
         self.sca_address_trace = []
         self.sca_values_trace = []
 
     @abc.abstractmethod
     def return_force(self):
-        """ Performs a simulated function return """
+        """Perform a simulated function return."""
         raise NotImplementedError
 
     def reset(self):

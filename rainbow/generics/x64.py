@@ -36,7 +36,8 @@ class rainbow_x64(Rainbow):
     BASE_REGS = {name[len('UC_X86_REG_'):].lower(): getattr(uc.x86_const, name) for name in dir(uc.x86_const) if
                  "_REG" in name}
     # workaround for capstone 4
-    REGS = {**BASE_REGS, "UC_X86_REG_RFLAGS": uc.x86_const.UC_X86_REG_EFLAGS}
+    # TODO: Not sure whether this is enough
+    REGS = {**BASE_REGS, "uc_x86_reg_rflags": uc.x86_const.UC_X86_REG_EFLAGS}
     OTHER_REGS = {}
 
     def reset_stack(self):

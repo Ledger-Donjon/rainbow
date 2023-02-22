@@ -10,6 +10,7 @@ all_regs_tracers = [regs_hw_sum_trace, regs_hd_sum_trace, wb_regs_trace]
 def test_regs_tracer(regs_tracer):
     emu = rainbow_arm(sca_mode=True)
     emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
+    emu.setup()
     emu.trace_regs = True
 
     # Setup tracer
@@ -35,6 +36,7 @@ def test_regs_tracer(regs_tracer):
 def test_regs_tracer_discard(regs_tracer):
     emu = rainbow_arm(sca_mode=True)
     emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
+    emu.setup()
     emu.trace_regs = True
 
     # Setup tracer
