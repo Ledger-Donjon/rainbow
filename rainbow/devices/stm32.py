@@ -40,22 +40,22 @@ class rainbow_stm32(rainbow_cortexm):
         self.map_space(self.RNG_BASE_ADDR, self.RNG_BASE_ADDR + 0xb)
         self.emu.hook_add(
             uc.UC_HOOK_MEM_READ,
-            self.rng_sr_read,
+            self._rng_sr_read,
             begin=self.RNG_BASE_ADDR + 0x4,
             end=self.RNG_BASE_ADDR + 0x4,
         )
         self.emu.hook_add(
             uc.UC_HOOK_MEM_READ,
-            self.rng_dr_read,
+            self._rng_dr_read,
             begin=self.RNG_BASE_ADDR + 0x8,
             end=self.RNG_BASE_ADDR + 0x8,
         )
 
-    def rng_sr_read(self, _uci, _access, address, _size, _value, _user_data):
+    def _rng_sr_read(self, _uci, _access, address, _size, _value, _user_data):
         """Hook called before RNG status register is read"""
         self[address] = 0x1  # data ready
 
-    def rng_dr_read(self, _uci, _access, address, _size, _value, _user_data):
+    def _rng_dr_read(self, _uci, _access, address, _size, _value, _user_data):
         """Hook called before RNG data register is read
 
         Please feel free to override me to implement custom random values.
@@ -81,9 +81,9 @@ class rainbow_stm32f215(rainbow_stm32):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setup_step()
+        self._setup_other()
 
-    def setup_step(self):
+    def _setup_other(self):
         # Load register dictionary dumped from SVD file
         with importlib.resources.path(__package__, "stm32f215.pickle") as p:
             self._load_other_regs(p)

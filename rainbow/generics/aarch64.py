@@ -30,15 +30,14 @@ class rainbow_aarch64(Rainbow):
     WORD_SIZE = 8
     ENDIANNESS = "little"
     PC = uc.arm64_const.UC_ARM64_REG_PC
+    REGS = {name[len('UC_ARM64_REG_'):].lower(): getattr(uc.arm64_const, name) for name in dir(uc.arm64_const) if
+            "_REG" in name}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_ARM64, uc.UC_MODE_ARM)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM64, cs.CS_MODE_ARM)
         self.disasm.detail = True
-
-        known_regs = [i[len('UC_ARM64_REG_'):] for i in dir(uc.arm64_const) if '_REG' in i]
-        self.REGS = {r.lower(): getattr(uc.arm64_const, 'UC_ARM64_REG_'+r) for r in known_regs}
 
         self.setup()
 

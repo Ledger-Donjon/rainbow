@@ -24,23 +24,22 @@ from rainbow.utils import HookWeakMethod
 
 
 class rainbow_cortexm(Rainbow):
-
     STACK_ADDR = 0x90000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
-    INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "cpsr", "pc", "lr"]
+    INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "cpsr",
+                     "pc", "lr"]
     TRACE_DISCARD = []
     WORD_SIZE = 4
     ENDIANNESS = "little"
     PC = uc.arm_const.UC_ARM_REG_PC
+    REGS = {name[len('UC_ARM_REG_'):].lower(): getattr(uc.arm_const, name) for name in dir(uc.arm_const) if
+                 "_REG" in name}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_THUMB | uc.UC_MODE_MCLASS)
         self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_THUMB | cs.CS_MODE_MCLASS)
         self.disasm.detail = True
-
-        known_regs = [i[len('UC_ARM_REG_'):] for i in dir(uc.arm_const) if '_REG' in i]
-        self.REGS = {r.lower(): getattr(uc.arm_const, 'UC_ARM_REG_'+r) for r in known_regs}
 
         self.setup()
 
@@ -61,8 +60,8 @@ class rainbow_cortexm(Rainbow):
 
         sp = self["sp"] - 32
         self["sp"] = sp
-        for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','pc', 'apsr']):
-            self.emu.mem_write(sp + 4*i, self[reg].to_bytes(4, 'little'))
+        for i, reg in enumerate(['r0', 'r1', 'r2', 'r3', 'r12', 'r14', 'pc', 'apsr']):
+            self.emu.mem_write(sp + 4 * i, self[reg].to_bytes(4, 'little'))
 
         self[sp + 24] = (self["pc"] | 1).to_bytes(4, 'little')
         self['control'] = 0
@@ -84,10 +83,10 @@ class rainbow_cortexm(Rainbow):
             self['control'] = (is_psp << 1) | is_unpriv
 
             sp = self['sp']
-            nvic_stack_bytes = self[sp:sp+32]
+            nvic_stack_bytes = self[sp:sp + 32]
             nvic_stack = unpack('8I', nvic_stack_bytes)
 
-            for i, reg in enumerate(['r0','r1','r2','r3','r12','r14','pc','apsr']):
+            for i, reg in enumerate(['r0', 'r1', 'r2', 'r3', 'r12', 'r14', 'pc', 'apsr']):
                 self[reg] = nvic_stack[i]
 
             self['ipsr'] = 0
