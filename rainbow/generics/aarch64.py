@@ -22,7 +22,10 @@ from rainbow.rainbow import Rainbow
 
 
 class rainbow_aarch64(Rainbow):
-
+    UC_ARCH = uc.UC_ARCH_ARM64
+    UC_MODE = uc.UC_MODE_ARM
+    CS_ARCH = cs.CS_ARCH_ARM64
+    CS_MODE = cs.CS_MODE_ARM
     STACK_ADDR = 0x20000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"x{i}" for i in range(30)]
@@ -33,16 +36,6 @@ class rainbow_aarch64(Rainbow):
     REGS = {name[len('UC_ARM64_REG_'):].lower(): getattr(uc.arm64_const, name) for name in dir(uc.arm64_const) if
             "_REG" in name}
     OTHER_REGS = {}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.emu = uc.Uc(uc.UC_ARCH_ARM64, uc.UC_MODE_ARM)
-        self.disasm = cs.Cs(cs.CS_ARCH_ARM64, cs.CS_MODE_ARM)
-        self.disasm.detail = True
-
-        self.setup()
-
-        self.reset_stack()
 
     def reset_stack(self):
         self.emu.reg_write(uc.arm64_const.UC_ARM64_REG_SP, self.STACK_ADDR)

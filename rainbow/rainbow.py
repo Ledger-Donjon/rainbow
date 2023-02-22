@@ -18,6 +18,7 @@
 import abc
 import functools
 import math
+from enum import auto, Flag
 from typing import Callable, Tuple, Optional, List, Dict, Set
 import capstone as cs
 import unicorn as uc
@@ -33,6 +34,19 @@ from .loaders import load_selector
 from .tracers import regs_hd_sum_trace, regs_hw_sum_trace
 
 
+class Print(Flag):
+    Functions = auto()
+    Registers = auto()
+    Memory = auto()
+    Code = auto()
+
+
+class Trace(Flag):
+    Addresses = auto()
+    Registers = auto()
+    Memory = auto()
+
+
 class Rainbow(abc.ABC):
     """ Emulation base class """
 
@@ -46,6 +60,10 @@ class Rainbow(abc.ABC):
     hooks: List[int]
 
     # Arch. constants
+    UC_ARCH: int
+    UC_MODE: int
+    CS_ARCH: int
+    CS_MODE: int
     WORD_SIZE: int
     REGS: Dict[str, int]
     OTHER_REGS: Dict[str, int]
@@ -63,7 +81,8 @@ class Rainbow(abc.ABC):
     block_hook: Optional[int]
     ct_hook: Optional[int]
 
-    def __init__(self, trace=True, sca_mode=False, sca_HD=False):
+    def __init__(self, trace=True, sca_mode=False, sca_HD=False,
+                 print_config: Print = Print(0), trace_config: Trace = Trace(0)):
         self.breakpoints = set()
         self.emu = None
         self.disasm = None
@@ -73,9 +92,9 @@ class Rainbow(abc.ABC):
         self.stubbed_functions = {}
         self.hooks = []
 
-        self.OTHER_REGS = {}
-
         # Tracing properties
+        self.print_config = print_config
+        self.trace_config = trace_config
         self.trace = trace
         self.mem_trace = False
         self.function_calls = False
@@ -90,9 +109,18 @@ class Rainbow(abc.ABC):
         self.sca_HD = sca_HD
         self.sca_mode = sca_mode
 
-        # Prepare a live disassembler
+        # Prepare the formatters
         self.asm_hl = NasmLexer()
         self.asm_fmt = TerminalFormatter(outencoding="utf-8")
+
+        # Prepare the emulator and disassembler
+        self.emu = uc.Uc(self.UC_ARCH, self.UC_MODE)
+        self.disasm = cs.Cs(self.CS_ARCH, self.CS_MODE)
+        self.disasm.detail = True
+
+        self.setup()
+
+        self.reset_stack()
 
     def __del__(self):
         # Unmap all memory regions.
@@ -321,7 +349,6 @@ class Rainbow(abc.ABC):
                 self.hooks.append(self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
                                                     HookWeakMethod(self._trace_mem)))
 
-
     def remove_bkpt(self, address):
         self.breakpoints.remove(address)
 
@@ -485,9 +512,13 @@ class Rainbow(abc.ABC):
 
         self.stubbed_functions[name] = to_hook
 
+    def remove_hook(self, name):
+        """Remove the hook."""
+        del self.stubbed_functions[name]
+
     def remove_hooks(self):
         """Remove the hooked functions."""
-        self.stubbed_functions = []
+        self.stubbed_functions = {}
 
     def _block_trace(self, _uci, address: int, _size, _user_data):
         """

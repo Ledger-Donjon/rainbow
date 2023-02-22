@@ -22,6 +22,10 @@ from rainbow.rainbow import Rainbow
 
 
 class rainbow_x64(Rainbow):
+    UC_ARCH = uc.UC_ARCH_X86
+    UC_MODE = uc.UC_MODE_64
+    CS_ARCH = cs.CS_ARCH_X86
+    CS_MODE = cs.CS_MODE_64
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x100000, STACK_ADDR + 32)
     INTERNAL_REGS = ["rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rip"]
@@ -34,16 +38,6 @@ class rainbow_x64(Rainbow):
     # workaround for capstone 4
     REGS = {**BASE_REGS, "UC_X86_REG_RFLAGS": uc.x86_const.UC_X86_REG_EFLAGS}
     OTHER_REGS = {}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.emu = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_64)
-        self.disasm = cs.Cs(cs.CS_ARCH_X86, cs.CS_MODE_64)
-        self.disasm.detail = True
-
-        self.setup()
-
-        self.reset_stack()
 
     def reset_stack(self):
         self.emu.reg_write(uc.x86_const.UC_X86_REG_RBP, self.STACK_ADDR)

@@ -22,6 +22,10 @@ from rainbow.rainbow import Rainbow
 
 
 class rainbow_arm(Rainbow):
+    UC_ARCH = uc.UC_ARCH_ARM
+    UC_MODE = uc.UC_MODE_ARM
+    CS_ARCH = cs.CS_ARCH_ARM
+    CS_MODE = cs.CS_MODE_ARM
     STACK_ADDR = 0xb0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
@@ -32,16 +36,6 @@ class rainbow_arm(Rainbow):
     REGS = {name[len('UC_ARM_REG_'):].lower(): getattr(uc.arm_const, name) for name in dir(uc.arm_const) if
             "_REG" in name}
     OTHER_REGS = {}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM)
-        self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM)
-        self.disasm.detail = True
-
-        self.setup()
-
-        self.reset_stack()
 
     @property
     def thumb_bit(self) -> int:

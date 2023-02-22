@@ -24,6 +24,10 @@ from rainbow.utils import HookWeakMethod
 
 
 class rainbow_cortexm(Rainbow):
+    UC_ARCH = uc.UC_ARCH_ARM
+    UC_MODE = uc.UC_MODE_THUMB | uc.UC_MODE_MCLASS
+    CS_ARCH = cs.CS_ARCH_ARM
+    CS_MODE = cs.CS_MODE_THUMB | cs.CS_MODE_MCLASS
     STACK_ADDR = 0x90000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "cpsr",
@@ -38,13 +42,6 @@ class rainbow_cortexm(Rainbow):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_THUMB | uc.UC_MODE_MCLASS)
-        self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_THUMB | cs.CS_MODE_MCLASS)
-        self.disasm.detail = True
-
-        self.setup()
-
-        self.reset_stack()
         # Force mapping of those addresses so that
         # exception returns can be caught in the base
         # block hook rather than a code fetch hook

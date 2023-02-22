@@ -22,7 +22,10 @@ from rainbow.rainbow import Rainbow
 
 
 class rainbow_m68k(Rainbow):
-
+    UC_ARCH = uc.UC_ARCH_M68K
+    UC_MODE = uc.UC_MODE_BIG_ENDIAN
+    CS_ARCH = cs.CS_ARCH_M68K
+    CS_MODE = cs.CS_MODE_M68K_000
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"d{i}" for i in range(8)] + [f"a{i}" for i in range(8)] + ["pc"]
@@ -33,16 +36,6 @@ class rainbow_m68k(Rainbow):
     REGS = {name[len('UC_M68K_REG_'):].lower(): getattr(uc.m68k_const, name) for name in dir(uc.m68k_const) if
             "_REG" in name}
     OTHER_REGS = {}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.emu = uc.Uc(uc.UC_ARCH_M68K, uc.UC_MODE_BIG_ENDIAN)
-        self.disasm = cs.Cs(cs.CS_ARCH_M68K, cs.CS_MODE_M68K_000)
-        self.disasm.detail = True
-
-        self.setup()
-
-        self.reset_stack()
 
     def reset_stack(self):
         self.emu.reg_write(uc.m68k_const.UC_M68K_REG_A7, self.STACK_ADDR)
