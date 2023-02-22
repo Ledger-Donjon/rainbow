@@ -34,6 +34,7 @@ class rainbow_cortexm(Rainbow):
     PC = uc.arm_const.UC_ARM_REG_PC
     REGS = {name[len('UC_ARM_REG_'):].lower(): getattr(uc.arm_const, name) for name in dir(uc.arm_const) if
                  "_REG" in name}
+    OTHER_REGS = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

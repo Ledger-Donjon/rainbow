@@ -32,6 +32,7 @@ class rainbow_aarch64(Rainbow):
     PC = uc.arm64_const.UC_ARM64_REG_PC
     REGS = {name[len('UC_ARM64_REG_'):].lower(): getattr(uc.arm64_const, name) for name in dir(uc.arm64_const) if
             "_REG" in name}
+    OTHER_REGS = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

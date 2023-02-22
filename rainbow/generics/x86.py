@@ -31,6 +31,7 @@ class rainbow_x86(Rainbow):
     PC = uc.x86_const.UC_X86_REG_EIP
     REGS = {name[len('UC_X86_REG_'):].lower(): getattr(uc.x86_const, name) for name in dir(uc.x86_const) if
             "_REG" in name}
+    OTHER_REGS = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

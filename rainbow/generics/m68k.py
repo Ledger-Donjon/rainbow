@@ -32,6 +32,7 @@ class rainbow_m68k(Rainbow):
     PC = uc.m68k_const.UC_M68K_REG_PC
     REGS = {name[len('UC_M68K_REG_'):].lower(): getattr(uc.m68k_const, name) for name in dir(uc.m68k_const) if
             "_REG" in name}
+    OTHER_REGS = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

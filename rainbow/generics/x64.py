@@ -33,6 +33,7 @@ class rainbow_x64(Rainbow):
                  "_REG" in name}
     # workaround for capstone 4
     REGS = {**BASE_REGS, "UC_X86_REG_RFLAGS": uc.x86_const.UC_X86_REG_EFLAGS}
+    OTHER_REGS = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
