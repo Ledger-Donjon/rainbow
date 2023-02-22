@@ -321,10 +321,6 @@ class Rainbow(abc.ABC):
                 self.hooks.append(self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
                                                     HookWeakMethod(self._trace_mem)))
 
-    def remove_hooks(self):
-        for hook in self.hooks:
-            self.emu.hook_del(hook)
-        self.hooks = []
 
     def remove_bkpt(self, address):
         self.breakpoints.remove(address)
@@ -488,6 +484,10 @@ class Rainbow(abc.ABC):
             return True
 
         self.stubbed_functions[name] = to_hook
+
+    def remove_hooks(self):
+        """Remove the hooked functions."""
+        self.stubbed_functions = []
 
     def _block_trace(self, _uci, address: int, _size, _user_data):
         """

@@ -40,4 +40,9 @@ def test_hook_prolog_missing_name():
 
 def test_remove_hooks():
     emu = rainbow_x64()
+    emu.load("examples/ledger_ctf2/ctf2", typ=".elf")
+
+    emu.hook_bypass("strtol")
+    assert "strtol" in emu.stubbed_functions
     emu.remove_hooks()
+    assert "strtol" not in emu.stubbed_functions

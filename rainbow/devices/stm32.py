@@ -81,9 +81,7 @@ class rainbow_stm32f215(rainbow_stm32):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._setup_other()
 
-    def _setup_other(self):
         # Load register dictionary dumped from SVD file
         with importlib.resources.path(__package__, "stm32f215.pickle") as p:
             self._load_other_regs(p)
