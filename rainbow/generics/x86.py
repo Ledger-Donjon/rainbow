@@ -29,7 +29,7 @@ class rainbow_x86(Rainbow):
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["eax", "ebx", "ecx", "edx", "esi", "edi", "eip", "ebp"]
-    TRACE_DISCARD = ["eflags"]
+    IGNORED_REGS = {"eflags"}
     WORD_SIZE = 4
     ENDIANNESS = "little"
     PC = uc.x86_const.UC_X86_REG_EIP

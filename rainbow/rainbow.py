@@ -47,10 +47,12 @@ class TraceConfig:
     def __init__(self,
                  mem_address: Optional[LeakageModel] = None,
                  mem_value: Optional[LeakageModel] = None,
-                 register: Optional[LeakageModel] = None):
+                 register: Optional[LeakageModel] = None,
+                 ignored_registers: Optional[Set[str]] = None):
         self.mem_address = mem_address
         self.mem_value = mem_value
         self.register = register
+        self.ignored_registers = ignored_registers
 
 
 class Rainbow(abc.ABC):
@@ -73,6 +75,7 @@ class Rainbow(abc.ABC):
     REGS: Dict[str, int]
     OTHER_REGS: Dict[str, int]
     INTERNAL_REGS: List[str]
+    IGNORED_REGS: List[str]
     STACK_ADDR: int
     STACK: Tuple[int, int]
     ENDIANNESS: str
@@ -250,7 +253,7 @@ class Rainbow(abc.ABC):
         if isinstance(s, str):  # regname
             v = self.OTHER_REGS.get(s, None)
             if v is not None:
-                return self.emu[v]  # TODO: This is broken.
+                return self.emu.reg_read(v)
             else:
                 return self.emu.reg_read(self.REGS[s])
         elif isinstance(s, int):
@@ -572,7 +575,8 @@ class Rainbow(abc.ABC):
                 ins = self.disassemble_single_detailed(address, size)
                 _, regs_written = ins.regs_access()
                 if regs_written:
-                    regs = list(filter(lambda r: r not in self.TRACE_DISCARD, map(ins.reg_name, regs_written)))  # type: ignore
+                    regs = list(filter(lambda r: r not in self.IGNORED_REGS and (not self.trace_config.ignored_registers or r not in self.trace_config.ignored_registers),
+                                       map(ins.reg_name, regs_written)))  # type: ignore
                 else:
                     regs = None
 

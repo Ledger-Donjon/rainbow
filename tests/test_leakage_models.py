@@ -53,7 +53,7 @@ def test_regs_tracer_discard(leakage_model):
     trace1 = emu.trace
 
     # Again but without r0-r4
-    emu.TRACE_DISCARD = ["r0", "r1", "r2", "r3", "r4"]
+    emu.trace_config.ignored_registers = {"r0", "r1", "r2", "r3", "r4"}
     emu["r0"] = key_addr
     emu["r1"] = rk_addr + 16
     emu.reset_trace()

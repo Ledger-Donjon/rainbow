@@ -32,7 +32,7 @@ class rainbow_cortexm(Rainbow):
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "cpsr",
                      "pc", "lr"]
-    TRACE_DISCARD = []
+    IGNORED_REGS = set()
     WORD_SIZE = 4
     ENDIANNESS = "little"
     PC = uc.arm_const.UC_ARM_REG_PC

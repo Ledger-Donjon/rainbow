@@ -29,7 +29,7 @@ class rainbow_aarch64(Rainbow):
     STACK_ADDR = 0x20000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"x{i}" for i in range(30)]
-    TRACE_DISCARD = []
+    IGNORED_REGS = set()
     WORD_SIZE = 8
     ENDIANNESS = "little"
     PC = uc.arm64_const.UC_ARM64_REG_PC

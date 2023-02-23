@@ -29,7 +29,7 @@ class rainbow_x64(Rainbow):
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x100000, STACK_ADDR + 32)
     INTERNAL_REGS = ["rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rip"]
-    TRACE_DISCARD = ["rflags"]
+    IGNORED_REGS = {"rflags"}
     WORD_SIZE = 8
     ENDIANNESS = "little"
     PC = uc.x86_const.UC_X86_REG_RIP

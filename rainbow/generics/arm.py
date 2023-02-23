@@ -29,7 +29,7 @@ class rainbow_arm(Rainbow):
     STACK_ADDR = 0xb0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
-    TRACE_DISCARD = []
+    IGNORED_REGS = set()
     WORD_SIZE = 4
     ENDIANNESS = "little"
     PC = uc.arm_const.UC_ARM_REG_PC

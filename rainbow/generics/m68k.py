@@ -29,7 +29,7 @@ class rainbow_m68k(Rainbow):
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"d{i}" for i in range(8)] + [f"a{i}" for i in range(8)] + ["pc"]
-    TRACE_DISCARD = []
+    IGNORED_REGS = set()
     WORD_SIZE = 4
     ENDIANNESS = "big"
     PC = uc.m68k_const.UC_M68K_REG_PC
