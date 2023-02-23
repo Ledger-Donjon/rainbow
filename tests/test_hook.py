@@ -3,7 +3,7 @@ from rainbow.generics import rainbow_x64
 
 
 def test_hook_bypass_ctf2():
-    emu = rainbow_x64()
+    emu = rainbow_x64(allow_stubs=True)
     emu.load("examples/ledger_ctf2/ctf2", typ=".elf")
     emu.setup()
 
@@ -15,7 +15,7 @@ def test_hook_bypass_ctf2():
 
 
 def test_hook_bypass_ctf2_empty():
-    emu = rainbow_x64()
+    emu = rainbow_x64(allow_stubs=True)
     emu.load("examples/ledger_ctf2/ctf2", typ=".elf")
     emu.setup()
     emu.hook_bypass("strtol")
@@ -23,14 +23,14 @@ def test_hook_bypass_ctf2_empty():
 
 
 def test_hook_bypass_missing_name():
-    emu = rainbow_x64()
+    emu = rainbow_x64(allow_stubs=True)
     emu.load("examples/ledger_ctf2/ctf2", typ=".elf")
     with pytest.raises(IndexError):
         emu.hook_bypass("strtol_blabla")
 
 
 def test_hook_prolog_missing_name():
-    emu = rainbow_x64()
+    emu = rainbow_x64(allow_stubs=True)
     emu.load("examples/ledger_ctf2/ctf2", typ=".elf")
 
     def strtol(e):
@@ -41,7 +41,7 @@ def test_hook_prolog_missing_name():
 
 
 def test_remove_hooks():
-    emu = rainbow_x64()
+    emu = rainbow_x64(allow_stubs=True)
     emu.load("examples/ledger_ctf2/ctf2", typ=".elf")
     emu.setup()
 

@@ -74,7 +74,7 @@ class rainbow_cortexm(Rainbow):
     def return_force(self):
         self["pc"] = self["lr"]
 
-    def _block_trace(self, uci, address, size, user_data):
+    def _block_hook(self, uci, address, size, user_data):
         if (address & 0xfffffff0) == 0xfffffff0:
             is_psp = (address >> 2) & 1
             is_unpriv = (address >> 3) & 1
@@ -93,4 +93,4 @@ class rainbow_cortexm(Rainbow):
 
         # In ARM Cortex-M, all code is in thumb mode
         # So all function addresses are odd
-        super()._block_trace(uci, address | 1, size, user_data)
+        super()._block_hook(uci, address | 1, size, user_data)

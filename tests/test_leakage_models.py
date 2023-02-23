@@ -1,21 +1,20 @@
 import pytest
-import unicorn as uc
 from rainbow.generics import rainbow_arm
-from rainbow.tracers import regs_hw_sum_trace, regs_hd_sum_trace, wb_regs_trace
+from rainbow.leakage_models import HammingWeight, HammingDistance, Identity
+from rainbow.rainbow import TraceConfig
 
-all_regs_tracers = [regs_hw_sum_trace, regs_hd_sum_trace, wb_regs_trace]
+all_models = [Identity, HammingWeight, HammingDistance]
+all_options = ["register", "mem_address", "mem_value"]
 
 
-@pytest.mark.parametrize("regs_tracer", all_regs_tracers)
-def test_regs_tracer(regs_tracer):
-    emu = rainbow_arm(sca_mode=True)
+@pytest.mark.parametrize("leakage_model", all_models)
+@pytest.mark.parametrize("option", all_options)
+def test_regs_tracer(leakage_model, option):
+    tr = TraceConfig()
+    setattr(tr, option, leakage_model())
+    emu = rainbow_arm(trace_config=tr)
     emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
     emu.setup()
-    emu.trace_regs = True
-
-    # Setup tracer
-    emu.emu.hook_del(emu.ct_hook)
-    emu.ct_hook = emu.emu.hook_add(uc.UC_HOOK_CODE, regs_tracer, emu)
 
     # Setup data
     key = bytes(range(16))
@@ -29,19 +28,14 @@ def test_regs_tracer(regs_tracer):
     emu["r1"] = rk_addr + 16
     emu.reset_trace()
     emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
-    assert len(emu.sca_values_trace) > 0
+    assert len(emu.trace) > 0
 
 
-@pytest.mark.parametrize("regs_tracer", all_regs_tracers)
-def test_regs_tracer_discard(regs_tracer):
-    emu = rainbow_arm(sca_mode=True)
+@pytest.mark.parametrize("leakage_model", all_models)
+def test_regs_tracer_discard(leakage_model):
+    emu = rainbow_arm(trace_config=TraceConfig(register=leakage_model()))
     emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
     emu.setup()
-    emu.trace_regs = True
-
-    # Setup tracer
-    emu.emu.hook_del(emu.ct_hook)
-    emu.ct_hook = emu.emu.hook_add(uc.UC_HOOK_CODE, regs_tracer, emu)
 
     # Setup data
     key = bytes(range(16))
@@ -55,8 +49,8 @@ def test_regs_tracer_discard(regs_tracer):
     emu["r1"] = rk_addr + 16
     emu.reset_trace()
     emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
-    assert len(emu.sca_values_trace) > 0
-    trace1 = emu.sca_values_trace
+    assert len(emu.trace) > 0
+    trace1 = emu.trace
 
     # Again but without r0-r4
     emu.TRACE_DISCARD = ["r0", "r1", "r2", "r3", "r4"]
@@ -64,6 +58,6 @@ def test_regs_tracer_discard(regs_tracer):
     emu["r1"] = rk_addr + 16
     emu.reset_trace()
     emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
-    assert len(emu.sca_values_trace) > 0
-    trace2 = emu.sca_values_trace
+    assert len(emu.trace) > 0
+    trace2 = emu.trace
     assert trace1 != trace2
