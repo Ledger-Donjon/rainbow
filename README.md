@@ -16,19 +16,22 @@ A blogpost demonstrating how to turn this tool into an automatic fault injection
 
 You will need Python 3.7 at least.
 
-- `python3 setup.py install`
+- `pip install .`
 
 If Unicorn or Capstone fails to install somehow:
 - Unicorn: http://www.unicorn-engine.org/download/
 - Capstone: https://www.capstone-engine.org/
 
-For the side-channel examples, you need to grab the latest [Lascar](https://github.com/Ledger-Donjon/lascar)
+For the side-channel examples, you need to the latest [Lascar](https://github.com/Ledger-Donjon/lascar),
+the following command installs the necessary packages.
 
-If you wish to use another version of Python, you can drop an issue and will look into it.
+- `pip install .[examples]`
+
+If you wish to use another version of Python, you can drop an issue and we will look into it.
 
 ## Running the examples
 
-Some examples will use Lascar's side-channel attacks and try to display traces using a custom plotter built on top of [Vispy](https://github.com/vispy/vispy). If you want to run those, you will need Vispy and `pyqt5` for the instruction trace + execution trace viewer.
+Some examples will use Lascar's side-channel attacks and try to display traces using a custom plotter ([visplot](https://github.com/Ledger-Donjon/visplot)) built on top of [Vispy](https://github.com/vispy/vispy). If you want to run those, you will need Vispy and `pyqt5` for the instruction trace + execution trace viewer.
 
 In the `./examples/` folder, you will find:
 - [x64_pimpmyxor.py](https://github.com/Ledger-Donjon/rainbow/blob/master/examples/pimp_my_xor/x64_pimpmyxor.py): basic emulation of [this challenge](https://github.com/GreHack/CTF-challs/tree/master/2018/Reverse/100%20-%20pimp_my_xor)
@@ -53,9 +56,8 @@ Grab a device or generic emulator like so
 
 ```python
 from rainbow.devices import rainbow_stm32f215
-from rainbow.generics import rainbow_x86
 
-e = rainbow_stm32f215(sca_mode=False)
+e = rainbow_stm32f215()
 ```
 
 Loading a binary
@@ -96,7 +98,7 @@ Rainbow and Lascar allow testing implemented countermeasures were correctly code
 Whiteboxed encryption primitives could also be broken using this tool, instead of e.g. Intel Pin or Valgrind to trace execution. Unicorn has several advantages in this regard:
 
 - Can be used on a different platform than that of the target binary
-- Allows easy manipulation of the state (for example redefining an external call to `rand()` in python)
+- Allows easy manipulation of the state (for example redefining an external call to `rand()` in Python)
 
 Disadvantages:
 
@@ -112,16 +114,16 @@ One can clearly see the 10 rounds of the AES despite this obfuscation:
 
 Embedded devices:
 - STM32F215
+- STM32l431
 
 Generic emulators:
 - ARM
 - ARM Cortex M
 - x86
 - x86_64
+- M68K
 
 File formats:
 - ELF
 - Intel Hex file
-
-Planned:
-- PE support
+- PE

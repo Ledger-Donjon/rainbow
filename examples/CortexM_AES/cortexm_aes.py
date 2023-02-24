@@ -7,7 +7,7 @@ import lascar
 import numpy as np
 from lascar.tools.aes import sbox
 from rainbow.generics import rainbow_arm
-#from visplot import plot
+from visplot import plot
 
 
 def aes_encrypt(key, plaintext):
