@@ -1,8 +1,33 @@
+# This file is part of rainbow
+#
+# rainbow is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#
+# Copyright 2023 Jan Jancar
+
+"""
+This module implements some common leakage models, which
+can be used to trace memory addresses, memory values or registers.
+"""
 import abc
 from typing import ClassVar, Literal
 
 
 class LeakageModel(abc.ABC):
+    """
+    A leakage model.
+    """
     num_args: ClassVar[int]
 
     @abc.abstractmethod
@@ -11,6 +36,9 @@ class LeakageModel(abc.ABC):
 
 
 class Identity(LeakageModel):
+    """
+    An identity leakage model, leaks the value fully.
+    """
     num_args = 1
 
     def __call__(self, *args, **kwargs) -> int:
@@ -18,6 +46,9 @@ class Identity(LeakageModel):
 
 
 class Bit(LeakageModel):
+    """
+    A bit leakage model, leaks the selected bit (indexed from lsb).
+    """
     num_args = 1
 
     def __init__(self, which: int):
@@ -31,6 +62,9 @@ class Bit(LeakageModel):
 
 
 class Slice(LeakageModel):
+    """
+    A slice leakage model, leaks a slice of the bits (indexed from lsb).
+    """
     num_args = 1
 
     def __init__(self, begin: int, end: int):
@@ -47,6 +81,9 @@ class Slice(LeakageModel):
 
 
 class HammingWeight(LeakageModel):
+    """
+    A Hamming weight leakage model.
+    """
     num_args = 1
 
     def __call__(self, *args, **kwargs) -> int:
@@ -54,6 +91,10 @@ class HammingWeight(LeakageModel):
 
 
 class HammingDistance(LeakageModel):
+    """
+    A Hamming distance leakage model, accepts two arguments, the hamming distance
+    of which is computed.
+    """
     num_args = 2
 
     def __call__(self, *args, **kwargs) -> int:

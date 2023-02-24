@@ -7,7 +7,7 @@ import lascar
 import numpy as np
 from lascar.tools.aes import sbox
 from rainbow.generics import rainbow_arm
-from visplot import plot
+#from visplot import plot
 
 
 def aes_encrypt(key, plaintext):
@@ -61,7 +61,7 @@ N = 100
 KEY = bytes(range(16))
 
 container = CortexMAesContainer(N)
-plot(container[:5].leakages)
+#plot(container[:5].leakages)
 
 cpa_engines = [
     lascar.CpaEngine(f'cpa{i}', lambda plaintext, key_byte, index=i: sbox[plaintext[index] ^ key_byte], range(256)) for

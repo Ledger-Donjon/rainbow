@@ -15,6 +15,7 @@
 #
 #
 # Copyright 2019 Victor Servant, Ledger SAS
+# Copyright 2023 Jan Jancar
 
 import unicorn as uc
 import capstone as cs

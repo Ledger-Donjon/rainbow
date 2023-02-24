@@ -15,6 +15,8 @@
 #
 #
 # Copyright 2019 Victor Servant, Ledger SAS
+# Copyright 2023 Jan Jancar
+
 import abc
 import functools
 import math
