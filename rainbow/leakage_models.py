@@ -21,7 +21,15 @@ This module implements some common leakage models, which
 can be used to trace memory addresses, memory values or registers.
 """
 import abc
+import sys
 from typing import ClassVar, Literal
+
+if sys.version_info[0] < 3 or sys.version_info[0] == 3 and sys.version_info[1] < 10:
+    def hw(i):
+        return bin(i).count("1")
+else:
+    def hw(i):
+        return i.bit_count()
 
 
 class LeakageModel(abc.ABC):
@@ -87,7 +95,7 @@ class HammingWeight(LeakageModel):
     num_args = 1
 
     def __call__(self, *args, **kwargs) -> int:
-        return int(args[0]).bit_count()
+        return hw(int(args[0]))
 
 
 class HammingDistance(LeakageModel):
@@ -98,4 +106,4 @@ class HammingDistance(LeakageModel):
     num_args = 2
 
     def __call__(self, *args, **kwargs) -> int:
-        return (int(args[0]) ^ int(args[1])).bit_count()
+        return hw(int(args[0]) ^ int(args[1]))

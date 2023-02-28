@@ -39,10 +39,3 @@ def parse_svd(svdfile):
                 offs = dr.get("addressOffset")
                 r[basename + "_" + name] = int(addr, 0) + int(offs, 0)
     return r
-
-
-def export(r, outf):
-    import pickle
-
-    with open(outf, "wb") as out:
-        pickle.dump(r, out)
