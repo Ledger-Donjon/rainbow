@@ -7,9 +7,11 @@ import lascar
 import numpy as np
 from lascar.tools.aes import sbox
 from rainbow.generics import rainbow_x86
+from rainbow import TraceConfig, HammingWeight
 
-e = rainbow_x86(sca_mode=True)
+e = rainbow_x86(trace_config=TraceConfig(register=HammingWeight()))
 e.load('crackme.exe')
+e.setup()
 
 
 def encrypt(plain):
@@ -27,7 +29,7 @@ def encrypt(plain):
     e[e.STACK_ADDR + 4] = 0xdeadbe00
     e.start(0x401050, 0, count=1000)
 
-    return e.sca_values_trace
+    return np.array([event["register"] for event in e.trace])
 
 
 class CrackMeContainer(lascar.AbstractContainer):

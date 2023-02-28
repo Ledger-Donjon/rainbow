@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 
 from binascii import unhexlify
-
+import random
 import numpy as np
 from rainbow.generics import rainbow_x86
+from rainbow import TraceConfig, HammingWeight, Identity
+from lascar import Session, TraceBatchContainer
 
 
 def generate_targetf():
-    e = rainbow_x86(sca_mode=True)
-
+    e = rainbow_x86(trace_config=TraceConfig(register=HammingWeight(), mem_value=Identity()))
     e.load("libnative-lib_x86.so")
-    target_func = "_Z48TfcqPqf1lNhu0DC2qGsAAeML0SEmOBYX4jpYUnyT8qYWIlEqPhS_"
+    e.setup()
 
-    e.trace = 1
-    e.mem_trace = 1
-    e.trace_regs = 1
+    target_func = "_Z48TfcqPqf1lNhu0DC2qGsAAeML0SEmOBYX4jpYUnyT8qYWIlEqPhS_"
 
     def targetf(inp, length):
         e.reset()
@@ -27,24 +26,20 @@ def generate_targetf():
         e[e.STACK_ADDR + 8] = 0xA5A5A5A5
         e.start(e.functions[target_func], 0, count=length)
 
-        return e.sca_address_trace, e.sca_values_trace
+        return [event["register"] if event["type"] == "reg" else event["mem_value"] for event in e.trace]
 
     return e, targetf
 
 
 def get_traces(targetf, nb, nb_samples):
-    import random
-
     values = []
     traces = []
     for i in range(nb):
         inp = "".join(random.choice("0123456789abcdef") for _ in range(32))
-        address_trace, values_trace = targetf(inp, nb_samples)
+        values_trace = targetf(inp, nb_samples)
         values.append([i for i in bytes(inp, "utf8")])
         traces.append(values_trace)
         print(".", end="")
-
-    addresses = address_trace
 
     values = np.array(values, dtype=np.uint8)
 
@@ -59,19 +54,13 @@ def get_traces(targetf, nb, nb_samples):
             for j in range(4):
                 tmp[i][x * 4 + j] = (t[x] >> (8 * j)) & 0xFF
 
-    return values, tmp, addresses
+    return values, tmp
 
 
 if __name__ == "__main__":
     _, func = generate_targetf()
-    values, traces, addresses = get_traces(func, 10, 1000000)
-
-    from lascar import Session, TraceBatchContainer
+    values, traces = get_traces(func, 10, 1000000)
 
     t = TraceBatchContainer(traces, values)
     s = Session(t)
     s.run()
-
-    from rainbow.utils.plot import viewer
-
-    viewer(addresses, s["var"].finalize())

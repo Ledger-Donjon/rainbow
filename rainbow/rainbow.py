@@ -50,10 +50,12 @@ class TraceConfig:
                  mem_address: Optional[LeakageModel] = None,
                  mem_value: Optional[LeakageModel] = None,
                  register: Optional[LeakageModel] = None,
+                 instruction: bool = False,
                  ignored_registers: Optional[Set[str]] = None):
         self.mem_address = mem_address
         self.mem_value = mem_value
         self.register = register
+        self.instructions = instruction
         self.ignored_registers = ignored_registers
 
 
@@ -82,7 +84,6 @@ class Rainbow(abc.ABC):
     STACK: Tuple[int, int]
     ENDIANNESS: str
     PC: int
-    # TODO: Trace discard handling. Class attr vs dynamic stuff.
 
     last_regs: Optional[List[str]]
     last_reg_values: Optional[Dict[str, int]]
@@ -125,11 +126,6 @@ class Rainbow(abc.ABC):
         self.map_space(*self.STACK)
 
         self.reset_stack()
-
-    def __del__(self):
-        # Unmap all memory regions.
-        for start, end, _ in self.emu.mem_regions():
-            self.emu.mem_unmap(start, end - start + 1)
 
     @functools.cached_property
     def PAGE_SIZE(self) -> int:  # noqa
@@ -287,7 +283,7 @@ class Rainbow(abc.ABC):
         rainbow.start(). It returns the memory address at which the fault was
         applied.
 
-        Injection faults can often led to invalid instructions which are raised
+        Injection faults can often led to invalid instruction which are raised
         as exceptions during emulation.
 
         Example:
@@ -324,7 +320,7 @@ class Rainbow(abc.ABC):
         """Add base hooks to the engine."""
         # We need the block hook only if we are
         # printing functions or need to handle stubs.
-        #if self.print_config & Print.Functions or self.allow_stubs:
+        # if self.print_config & Print.Functions or self.allow_stubs:
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
                                             HookWeakMethod(self._block_hook))
 
@@ -335,9 +331,9 @@ class Rainbow(abc.ABC):
                                               HookWeakMethod(self._mem_hook))
 
         # We need the code hook only if we are
-        # printing code or registers, tracing registers or need to handle breakpoints.
+        # printing code or registers, tracing registers or instruction or need to handle breakpoints.
         if self.print_config & (
-                Print.Code | Print.Registers) or self.trace_config.register or self.allow_breakpoints:
+                Print.Code | Print.Registers) or self.trace_config.register or self.trace_config.instructions or self.allow_breakpoints:
             self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
                                                HookWeakMethod(self._code_hook))
 
@@ -554,6 +550,7 @@ class Rainbow(abc.ABC):
                 self.print_asmline(address, ins.mnemonic, ins.op_str)
 
         # Handle the register tracing
+        event = None
         if self.trace_config.register:
             # This hook gets called before an instruction executes, so
             #  - regs are registers written by this instr, yet their values right now are not changed
@@ -564,9 +561,9 @@ class Rainbow(abc.ABC):
             # So we need to go over last_regs, get their prev values from last_reg_values and get their current values.
             if self.last_regs:
                 reg_values = {r: uci.reg_read(self.REGS[r]) for r in self.last_regs}
-                leak = sum(self.trace_config.register(reg_values[r], self.last_reg_values.get(r, 0)) for r in self.last_regs)
-                event = {"type": "reg", "register": leak}
-                self.trace.append(event)
+                leak = sum(
+                    self.trace_config.register(reg_values[r], self.last_reg_values.get(r, 0)) for r in self.last_regs)
+                event = {"type": "code", "register": leak}
 
                 # Store the updated reg values into last_reg_values.
                 for r, val in reg_values.items():
@@ -577,9 +574,18 @@ class Rainbow(abc.ABC):
                 ins = self.disassemble_single_detailed(address, size)
                 _, regs_written = ins.regs_access()
                 if regs_written:
-                    regs = list(filter(lambda r: r not in self.IGNORED_REGS and (not self.trace_config.ignored_registers or r not in self.trace_config.ignored_registers),
+                    regs = list(filter(lambda r: r not in self.IGNORED_REGS and (
+                                not self.trace_config.ignored_registers or r not in self.trace_config.ignored_registers),
                                        map(ins.reg_name, regs_written)))  # type: ignore
                 else:
                     regs = None
 
+        if self.trace_config.instructions:
+            if ins is None:
+                ins = self.disassemble_single_detailed(address, size)
+            if event is None:
+                event = {"type": "code"}
+            event["instruction"] = f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}"
+        if event is not None:
+            self.trace.append(event)
         self.last_regs = regs

@@ -16,4 +16,6 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
-from rainbow.rainbow import Rainbow
+from rainbow.rainbow import *
+from rainbow.fault_models import *
+from rainbow.leakage_models import *

@@ -3,15 +3,12 @@
 # This example is 'Pimp my xor' from GreHack 2018
 # Just as a debug trace example
 # Download the file from https://github.com/GreHack/CTF-challs/tree/master/2018/Reverse/100%20-%20pimp_my_xor
-
+from rainbow import Print
 from rainbow.generics import rainbow_x64
 
-e = rainbow_x64()
+e = rainbow_x64(print_config=Print.Code)
 e.load("pimp_my_xor", typ=".elf")
-
-e.mem_trace = 1
-e.trace_regs = 1
-e.function_calls = 1
+e.setup()
 
 # Read the obfuscated password
 hidden_string = e[0x404060 : 0x404060 + 0x2E]

@@ -22,9 +22,9 @@ from .interface import Interface, setup_qt
 
 
 def viewer(instructions: List[str], *args, **kwargs) -> int:
-    """Visplot with instructions list
+    """Visplot with instruction list
 
-    Build a Qt application showing the instructions list next to visplot.
+    Build a Qt application showing the instruction list next to visplot.
     Clicking an instruction zooms on the corresponding point in the side-channel
     traces, and conversely.
     """

@@ -49,7 +49,7 @@ class Interface(qt.QMainWindow):
         self.showMaximized()
 
     def instr_list_set_font_style(self, row, bg_color=None, *args, **kwargs):
-        """Change row style in instructions listing
+        """Change row style in instruction listing
 
         >>> self.instr_list_set_font_style(2, weight=75, italic=False)
         >>> self.instr_list_set_font_style(2, bg_color=(25, 25, 25)))
@@ -59,7 +59,7 @@ class Interface(qt.QMainWindow):
             self.instr_list.item(row).setBackground(QColor(*bg_color))
 
     def on_instr_list_row_change(self, _event):
-        """Event called when instructions list selection changes"""
+        """Event called when instruction list selection changes"""
         item = self.instr_list.currentItem()
         index = self.instr_list.row(item)
         self.focus_change(index)
