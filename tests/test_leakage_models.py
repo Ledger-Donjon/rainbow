@@ -5,12 +5,14 @@ from rainbow.rainbow import TraceConfig
 
 all_models = [Identity, HammingWeight, HammingDistance]
 all_options = ["register", "mem_address", "mem_value"]
+all_instr = [True, False]
 
 
 @pytest.mark.parametrize("leakage_model", all_models)
 @pytest.mark.parametrize("option", all_options)
-def test_regs_tracer(leakage_model, option):
-    tr = TraceConfig()
+@pytest.mark.parametrize("instr", all_instr)
+def test_regs_tracer(leakage_model, option, instr):
+    tr = TraceConfig(instruction=instr)
     setattr(tr, option, leakage_model())
     emu = rainbow_arm(trace_config=tr)
     emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
@@ -32,8 +34,9 @@ def test_regs_tracer(leakage_model, option):
 
 
 @pytest.mark.parametrize("leakage_model", all_models)
-def test_regs_tracer_discard(leakage_model):
-    emu = rainbow_arm(trace_config=TraceConfig(register=leakage_model()))
+@pytest.mark.parametrize("instr", all_instr)
+def test_regs_tracer_discard(leakage_model, instr):
+    emu = rainbow_arm(trace_config=TraceConfig(register=leakage_model(), instruction=instr))
     emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
     emu.setup()
 

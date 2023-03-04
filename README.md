@@ -52,7 +52,7 @@ At a branch instruction, if the destination is a known function, its name is sho
 
 ## Basic usage
 
-Grab a device or generic emulator like so
+Grab a device or generic emulator like so:
 
 ```python
 from rainbow.devices import rainbow_stm32f215
@@ -60,10 +60,11 @@ from rainbow.devices import rainbow_stm32f215
 e = rainbow_stm32f215()
 ```
 
-Loading a binary
+Load a binary:
 
 ```python
 e.load('file', typ='.elf')
+e.setup()
 ```
 
 File type is guessed on the extension when possible (.elf, .hex).
@@ -76,12 +77,53 @@ e.start(start_address, stop_address, count=number_of_instructions)
 
 Just like with unicorn. The underlying Unicorn instance is always available as `e.emu`.
 
+To enable printing as code gets executed, simply use the `Print` flag.
+
+```python
+from rainbow import Print
+import colorama
+
+colorama.init()  # Only do this once to enable colors
+
+e = rainbow_stm32f215(print=Print.Code | Print.Functions)  # see other values of the flag
+```
+
 ## Side-Channel simulation
 
-Rainbow only produces an execution trace, without applying any processing (such as using the Hamming weight of all values and adding noise) on the values. This is left as some post-processing, so that the user can apply its own leakage model and simulate various conditions from the same traces.
+Rainbow only produces an execution trace, without applying any processing (such as adding noise) on the values.
+This is left as some post-processing, so that the user can apply its own leakage model and simulate various conditions from the same traces.
 Also, not introducing any noise allows testing in a worst-case scenario, which can yield important results.
 
-To perform the analysis, one can use [Lascar](https://github.com/Ledger-Donjon/lascar). You can find some scripts in the `examples` folder here which already use it.
+To perform the analysis, one can use [Lascar](https://github.com/Ledger-Donjon/lascar).
+You can find some scripts in the `examples` folder here which already use it.
+
+To setup tracing (to produce an execution trace) use the `trace_config` option
+to the emulator. The following piece of code sets up tracing of register
+using the Hamming weight leakage model.
+```python
+from rainbow import TraceConfig, HammingWeight
+
+e = rainbow_stm32f215(trace_config=TraceConfig(register=HammingWeight()))
+e.load('file', typ='.elf')
+e.setup()
+
+e.start(start_address)
+
+print(e.trace)
+# [{"type": "code", "register": 7}, {"type": "code": "register": 5}]
+```
+
+If you setup tracing for `mem_address`, then the `e.trace` list will have dictionaries
+like `{"type": "mem_read", "address": 1234}` or `{"type": "mem_write", "address": 1234}`
+with the value of the `address` entry passed through the leakage model. Tracing for 
+`mem_value` does the same, but traces memory values read or written and produces entries
+like  `{"type": "mem_read", "value": 1234}`. Note that these approaches can be combined,
+resulting in the dictionary having both an `address` and `value` entries.
+
+If you setup tracing for `code`, dissasembled instructions will be available in the
+trace with dictionaries like `{"type": "code", "instruction": "     404 ldm.w   r0, {r4, r5, r6, r7}"}`.
+Note that this tracing option combined with register tracing produces a dictionary with
+both `instruction` and `register` entries.
 
 ## Application examples
 

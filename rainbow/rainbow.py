@@ -37,6 +37,7 @@ from .loaders import load_selector
 
 
 class Print(Flag):
+    """Printing configuration."""
     Functions = auto()
     Registers = auto()
     Memory = auto()
@@ -45,6 +46,7 @@ class Print(Flag):
 
 
 class TraceConfig:
+    """Tracing configuration."""
 
     def __init__(self,
                  mem_address: Optional[LeakageModel] = None,
