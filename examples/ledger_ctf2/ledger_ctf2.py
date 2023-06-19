@@ -23,9 +23,9 @@ class LedgerCtf2Container(lascar.AbstractContainer):
 
 N=90
 container = LedgerCtf2Container(N)
-cpa_engines = [lascar.CpaEngine(f'cpa{i}',lambda plaintext, key_byte, index=i: sbox[plaintext[index]^key_byte], range(256)) for i in range(16)]
+cpa_engines = [lascar.CpaEngine(lambda plaintext, key_byte, index=i: sbox[plaintext[index]^key_byte], range(256)) for i in range(16)]
 
-s = lascar.Session(container, 
+s = lascar.Session(container,
                    engines=cpa_engines,
                    output_method=lascar.ConsoleOutputMethod()).run(1)
 

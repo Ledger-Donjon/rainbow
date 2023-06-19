@@ -38,15 +38,15 @@ def show_nicv(values, traces, nr_digits):
     s = Session(t)
 
     # Input value leakage
-    # s.add_engines([NicvEngine('a'+str(i), lambda v,z=i:v[z], range(9)) for i in range(nr_digits)])
+    # s.add_engines([NicvEngine(lambda v,z=i:v[z], range(9)) for i in range(nr_digits)])
 
     # Difference leakage
     s.add_engines(
-        [NicvEngine('a' + str(i), lambda v, z=i: 9 + np.int8(v[z]) - np.int8(ord(STORED_PIN[z])), range(17)) for i in
+        [NicvEngine(lambda v, z=i: 9 + np.int8(v[z]) - np.int8(ord(STORED_PIN[z])), range(17)) for i in
          range(nr_digits)])
 
     # below is a variant on the carry bit
-    # s.add_engines([NicvEngine('c'+str(i), lambda v,z=i:int(v[z]>ord(STORED_PIN[z])), range(2)) for i in range(nr_digits)])
+    # s.add_engines([NicvEngine(lambda v,z=i:int(v[z]>ord(STORED_PIN[z])), range(2)) for i in range(nr_digits)])
 
     s.run()
 
