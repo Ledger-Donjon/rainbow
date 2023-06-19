@@ -16,6 +16,7 @@
 #
 # Copyright 2022 Victor Servant, Ledger SAS
 # Copyright 2022 Alexandre Iooss, Ledger SAS
+# Copyright 2023 Jan Jancar
 
 """
 This module is a collection of fault injection models.
@@ -23,23 +24,25 @@ A fault model is defined as a function that takes only a Rainbow instance as
 argument, then updates the emulator state according to their model and returns
 nothing.
 """
+import unicorn as uc
+from .rainbow import Rainbow, Print
+from .utils.color_functions import color
 
-from .rainbow import rainbowBase
-from .color_functions import color
 
-
-def fault_skip(emu: rainbowBase):
+def fault_skip(emu: Rainbow):
     """Increase program counter to skip current instruction
 
     Right now this only handles ARM emulation.
     """
+    if emu.UC_ARCH != uc.UC_ARCH_ARM:
+        raise NotImplementedError("Only ARM emulation is supported.")
     # Get current instruction size
     current_pc = emu["pc"]
     ins = emu.disassemble_single(current_pc, 4)
     if ins is None:
         raise RuntimeError("Skipping an invalid instruction")
     _, ins_size, _, _ = ins
-    if emu.trace:
+    if emu.print_config & Print.Faults:
         print(
             "\n" + color("YELLOW", f"      --  instruction skip {current_pc:<8X}   "),
             end=";",
@@ -60,7 +63,9 @@ def fault_stuck_at(value: int = 0):
     Right now this only handles ARM emulation.
     """
 
-    def f(emu: rainbowBase):
+    def f(emu: Rainbow):
+        if emu.UC_ARCH != uc.UC_ARCH_ARM:
+            raise NotImplementedError("Only ARM emulation is supported.")
         # Get registers updated by current instruction
         current_pc = emu["pc"]
         ins = emu.disassemble_single_detailed(current_pc, 4)

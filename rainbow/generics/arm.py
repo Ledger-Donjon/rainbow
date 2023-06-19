@@ -15,42 +15,36 @@
 #
 #
 # Copyright 2019 Victor Servant, Ledger SAS
+# Copyright 2023 Jan Jancar
 
 import unicorn as uc
 import capstone as cs
-from rainbow.rainbow import rainbowBase
-from rainbow.color_functions import color
+from rainbow.rainbow import Rainbow
 
 
-class rainbow_arm(rainbowBase):
-
+class rainbow_arm(Rainbow):
+    UC_ARCH = uc.UC_ARCH_ARM
+    UC_MODE = uc.UC_MODE_ARM
+    CS_ARCH = cs.CS_ARCH_ARM
+    CS_MODE = cs.CS_MODE_ARM
     STACK_ADDR = 0xb0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
-    TRACE_DISCARD = []
+    IGNORED_REGS = set()
+    WORD_SIZE = 4
+    ENDIANNESS = "little"
+    PC = uc.arm_const.UC_ARM_REG_PC
+    REGS = {name[len('UC_ARM_REG_'):].lower(): getattr(uc.arm_const, name) for name in dir(uc.arm_const) if
+            "_REG" in name}
+    OTHER_REGS = {}
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.emu = uc.Uc(uc.UC_ARCH_ARM, uc.UC_MODE_ARM)
-        self.disasm = cs.Cs(cs.CS_ARCH_ARM, cs.CS_MODE_ARM)
-        self.disasm.detail = True
-        self.word_size = 4
-        self.endianness = "little"
-        self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
-        self.page_shift = self.page_size.bit_length() - 1
-        self.pc = uc.arm_const.UC_ARM_REG_PC
-
-        known_regs = [i[len('UC_ARM_REG_'):] for i in dir(uc.arm_const) if '_REG' in i]
-        self.reg_map = {r.lower(): getattr(uc.arm_const, 'UC_ARM_REG_'+r) for r in known_regs}
-
-        self.setup()
-
-        self.reset_stack()
+    @property
+    def thumb_bit(self) -> int:
+        # Thumb execution state bit is bit 5 in CPSR
+        return (self["cpsr"] >> 5) & 1
 
     def start(self, begin, *args, **kwargs):
-        # ARM Thumb mode case
-        thumb_bit = (self["cpsr"] >> 5) & 1
-        return super().start(begin | thumb_bit, *args, **kwargs)
+        return super().start(begin | self.thumb_bit, *args, **kwargs)
 
     def reset_stack(self):
         self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
@@ -58,13 +52,11 @@ class rainbow_arm(rainbowBase):
     def return_force(self):
         self["pc"] = self["lr"]
 
-    def block_handler(self, uci, address, size, user_data):
-        # Thumb execution state bit is bit 5 in CPSR
-        thumb_bit = (self["cpsr"]>>5) & 1
-        if thumb_bit == 0:
+    def _block_hook(self, uci, address, size, user_data):
+        if self.thumb_bit == 0:
             # switch disassembler to ARM mode
             self.disasm.mode = cs.CS_MODE_ARM
         else:
             self.disasm.mode = cs.CS_MODE_THUMB
 
-        super().block_handler(uci, address | thumb_bit, size, user_data)
+        super()._block_hook(uci, address | self.thumb_bit, size, user_data)

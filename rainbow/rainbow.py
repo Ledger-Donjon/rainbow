@@ -15,107 +15,129 @@
 #
 #
 # Copyright 2019 Victor Servant, Ledger SAS
+# Copyright 2023 Jan Jancar
 
-
+import abc
 import functools
 import math
-import weakref
-from typing import Callable, Tuple
+from enum import auto, Flag
+from typing import Callable, Tuple, Optional, List, Dict, Set, Any
 import capstone as cs
-import colorama
 import unicorn as uc
 from pygments import highlight
-from pygments.formatters import TerminalFormatter as formatter
-from pygments.lexers import NasmLexer
+from pygments.formatters.terminal import TerminalFormatter
+from pygments.lexers.asm import NasmLexer
+# TODO: Add note about colorama use. Call init in example code.
+from unicorn import UcError
 
-from .color_functions import color
+from .leakage_models import LeakageModel
+from .utils import region_intersects, HookWeakMethod
+from .utils.color_functions import color
 from .loaders import load_selector
-from .tracers import regs_hd_sum_trace, regs_hw_sum_trace
 
 
-class HookWeakMethod:
-    """
-    Class to pass instance method callbacks to unicorn with weak referencing to
-    prevent circular dependencies.
-
-    Circular dependencies blocks the GC to clean the rainbowBase at the correct
-    time, and this causes memory troubles...
-
-    We cannot use directly weakref.WeakMethod since __call__ does not execute
-    the method, but returns it. This class does call the method when __call__
-    is executed.
-    """
-    def __init__(self, method):
-        self.method = weakref.WeakMethod(method)
-
-    def __call__(self, *args, **kwargs):
-        self.method()(*args, **kwargs)
+class Print(Flag):
+    """Printing configuration."""
+    Functions = auto()
+    Registers = auto()
+    Memory = auto()
+    Code = auto()
+    Faults = auto()
 
 
-class rainbowBase:
+class TraceConfig:
+    """Tracing configuration."""
 
+    def __init__(self,
+                 mem_address: Optional[LeakageModel] = None,
+                 mem_value: Optional[LeakageModel] = None,
+                 register: Optional[LeakageModel] = None,
+                 instruction: bool = False,
+                 ignored_registers: Optional[Set[str]] = None):
+        self.mem_address = mem_address
+        self.mem_value = mem_value
+        self.register = register
+        self.instructions = instruction
+        self.ignored_registers = ignored_registers
+
+
+class Rainbow(abc.ABC):
     """ Emulation base class """
 
-    def __init__(self, trace=True, sca_mode=False,sca_HD=False):
-        self.breakpoints = []
-        self.skips = []
-        self.emu = None
-        self.disasm = None
-        self.uc_reg = None
-        self.page_size = 0
+    # Attrs
+    breakpoints: Set[int]
+    emu: Optional[uc.Uc]
+    disasm: Optional[cs.Cs]
+    reg_backup: List[int]
+    functions: Dict[str, int]
+    function_names: Dict[int, str]
+
+    # Arch. constants
+    UC_ARCH: int
+    UC_MODE: int
+    CS_ARCH: int
+    CS_MODE: int
+    WORD_SIZE: int
+    REGS: Dict[str, int]
+    OTHER_REGS: Dict[str, int]
+    INTERNAL_REGS: List[str]
+    IGNORED_REGS: List[str]
+    STACK_ADDR: int
+    STACK: Tuple[int, int]
+    ENDIANNESS: str
+    PC: int
+
+    last_regs: Optional[List[str]]
+    last_reg_values: Optional[Dict[str, int]]
+    last_address: Optional[int]
+    last_value: Optional[int]
+    trace: List[Any]
+
+    block_hook: Optional[int]
+    mem_hook: Optional[int]
+    code_hook: Optional[int]
+
+    def __init__(self, print_config: Print = Print(0), trace_config: TraceConfig = TraceConfig(),
+                 allow_breakpoints: bool = False, allow_stubs: bool = False):
+        self.breakpoints = set()
         self.functions = {}
         self.function_names = {}
-        self.profile_counter = 0
-
-        self.OTHER_REGS = {}
-        self.OTHER_REGS_NAMES = {}
-
-        # Tracing properties
-        self.trace = trace
-        self.mem_trace = False
-        self.function_calls = False
-        self.trace_regs = False
         self.stubbed_functions = {}
 
-        self.sca_mode = sca_mode
+        # Tracing properties
+        self.print_config = print_config
+        self.trace_config = trace_config
+        self.allow_breakpoints = allow_breakpoints
+        self.allow_stubs = allow_stubs
 
-        ## Prepare a live disassembler
+        # Leak storage
+        self.last_reg_values = {}
+        self.last_regs = []
+        self.last_value = 0
+        self.last_address = 0
+        self.trace = []
+
+        # Prepare the formatters
         self.asm_hl = NasmLexer()
-        self.asm_fmt = formatter(outencoding="utf-8")
+        self.asm_fmt = TerminalFormatter(outencoding="utf-8")
 
-        colorama.init()
+        # Prepare the emulator and disassembler
+        self.emu = uc.Uc(self.UC_ARCH, self.UC_MODE)
+        self.disasm = cs.Cs(self.CS_ARCH, self.CS_MODE)
+        self.disasm.detail = True
+        self.map_space(*self.STACK)
 
-        self.trace_reset()
+        self.reset_stack()
 
-        # Take into account another leakage model
-        self.sca_HD = sca_HD
+    @functools.cached_property
+    def PAGE_SIZE(self) -> int:  # noqa
+        return self.emu.query(uc.UC_QUERY_PAGE_SIZE)
 
-    def __del__(self):
-        # Unmap all memory regions.
-        for start, end, _ in self.emu.mem_regions():
-            self.emu.mem_unmap(start, end - start + 1)
+    @property
+    def PAGE_SHIFT(self) -> int:  # noqa
+        return self.PAGE_SIZE.bit_length() - 1
 
-        # Calling colorama.init too many times without deinit may cause issues
-        colorama.deinit()
-
-    def trace_reset(self):
-        self.reg_leak = None
-        self.sca_address_trace = []
-        self.sca_values_trace = []
-
-    def __region_intersects(self, ra: Tuple[int, int], rb: Tuple[int, int]) -> bool:
-        """
-        :return: True if two given regions have non empty intersection.
-
-        :param ra: First region bounds, both start and end included.
-        :param rb: Second region bounds, both start and end included.
-        """
-        assert (ra[1] >= ra[0]) and (rb[1] >= rb[0])
-        u = max(ra[0], rb[0])
-        v = min(ra[1], rb[1])
-        return v >= u
-
-    def map_space(self, start, end, verbose=False):
+    def map_space(self, start: int, end: int, verbose: bool = False):
         """
         Maps area into the unicorn emulator between start and end, or nothing if it was already mapped.
         Only completes missing portions if there is overlapping with a previously-mapped segment
@@ -124,6 +146,7 @@ class rainbowBase:
 
         :param start: Region start address, included.
         :param end: Region end address, included.
+        :param verbose: Whether to print mapping info.
         """
         if end < start:
             raise ValueError("Invalid region")
@@ -134,7 +157,7 @@ class rainbowBase:
         if any(map(lambda x: start >= x[0] and end <= x[1], regions)):
             if verbose:
                 print(
-                    f"[*] Did not map 0x{start:X},0x{end-start+1:X} as it is already mapped"
+                    f"[*] Did not map 0x{start:X},0x{end - start + 1:X} as it is already mapped"
                 )
             return
 
@@ -142,19 +165,19 @@ class rainbowBase:
             return
 
         # Floor align start address
-        start = (start >> self.page_shift) << self.page_shift
+        start = (start >> self.PAGE_SHIFT) << self.PAGE_SHIFT
 
         # Ceil align end address
-        if (end + 1) & (self.page_size - 1):
+        if (end + 1) & (self.PAGE_SIZE - 1):
             end = (
-                (((end + 1) >> self.page_shift) << self.page_shift) + self.page_size - 1
+                    (((end + 1) >> self.PAGE_SHIFT) << self.PAGE_SHIFT) + self.PAGE_SIZE - 1
             )
 
         # List of overlapping or adjacent regions which must be merged.
         overlaps: list[Tuple[int, bytes]] = []
         for r_start, r_end, _ in regions:
             # Region [start, end] is augmented for intersection test to detect adjacency.
-            if self.__region_intersects((start - 1, end + 1), (r_start, r_end)):
+            if region_intersects((start - 1, end + 1), (r_start, r_end)):
                 r_size = r_end - r_start + 1
                 data = self.emu.mem_read(r_start, r_size)
                 self.emu.mem_unmap(r_start, r_size)
@@ -162,14 +185,18 @@ class rainbowBase:
                 start = min(start, r_start)
                 end = max(end, r_end)
 
-        assert start & (self.page_size - 1) == 0
-        assert (end + 1) & (self.page_size - 1) == 0
+        if start & (self.PAGE_SIZE - 1) != 0:
+            raise ValueError("Invalid region start.")
+        if (end + 1) & (self.PAGE_SIZE - 1) != 0:
+            raise ValueError("Invalid region end.")
 
         if verbose:
             print(f"[*] Mapping 0x{start:X}-0x{end:X}")
-        ret = self.emu.mem_map(start, end - start + 1)
-        if ret is not None:
-            raise Exception(ret)
+
+        try:
+            self.emu.mem_map(start, end - start + 1)
+        except UcError as e:
+            raise ValueError from e
 
         # Restore data of merged regions which have been unmapped
         for r_start, data in overlaps:
@@ -189,70 +216,66 @@ class rainbowBase:
           emulator[0x4000:0x4300] = 0
          """
 
-        ## convert value
+        # convert value
         if isinstance(val, int):
-            if val==0:
+            if val == 0:
                 length = 1
                 value = bytes(1)
             else:
                 length = math.ceil(val.bit_length() / 8)
-                value = val.to_bytes(length, self.endianness)
+                value = val.to_bytes(length, self.ENDIANNESS)
         elif isinstance(val, bytes):
             length = len(val)
             value = val
         else:
             raise Exception("Unhandled value type", type(val))
 
-        ret = None 
         if isinstance(inp, str):  # regname
-            v = self.OTHER_REGS_NAMES.get(inp, None)
+            v = self.OTHER_REGS.get(inp, None)
             if v is not None:
-                ret = self.emu.mem_write(v, val.to_bytes(self.word_size, self.endianness))
+                self.emu.mem_write(v, val.to_bytes(self.WORD_SIZE, self.ENDIANNESS))
             else:
-                ret = self.emu.reg_write(self.reg_map[inp], val)
+                self.emu.reg_write(self.REGS[inp], val)
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
-            ret = self.emu.mem_write(inp, value)
+            self.emu.mem_write(inp, value)
         elif isinstance(inp, slice):
             if inp.step is not None:
                 return NotImplementedError
             self.map_space(inp.start, inp.stop)
-            v = val.to_bytes(length, self.endianness)
-            ret = self.emu.mem_write(inp.start, v*(inp.stop-inp.start))
+            v = val.to_bytes(length, self.ENDIANNESS)
+            self.emu.mem_write(inp.start, v * (inp.stop - inp.start))
         else:
             raise Exception("Invalid range type for write: ", type(inp), inp)
 
     def __getitem__(self, s):
         """ Reads from a register using its shortname, or from a memory address/region. """
         if isinstance(s, str):  # regname
-            v = self.OTHER_REGS_NAMES.get(s, None)
+            v = self.OTHER_REGS.get(s, None)
             if v is not None:
-                return self.emu[v]
+                return self.emu.reg_read(v)
             else:
-                return self.emu.reg_read(self.reg_map[s])
+                return self.emu.reg_read(self.REGS[s])
         elif isinstance(s, int):
             if s & 3:
                 size = 1
             else:
-                size = self.word_size
+                size = self.WORD_SIZE
             return self.emu.mem_read(s, size)
         if isinstance(s, slice):
             return self.emu.mem_read(s.start, s.stop - s.start)
 
-    def load(self, filename, *args, **kwargs):
+    def load(self, filename, *args, **kwargs) -> Optional[int]:
         """ Load a file into the emulator's memory """
         return load_selector(filename, self, *args, **kwargs)
 
     def start(self, begin, end, timeout=0, count=0) -> None:
         """ Begin emulation """
         try:
-            # Copy the original registers into the backup before starting the process
-            # This is for the Hamming Distance leakage model
-            self.RegistersBackup = [0]*len(self.reg_map)
             self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
             self.emu.emu_stop()
-            pc = self.emu.reg_read(uc.arm_const.UC_ARM_REG_PC)
+            pc = self.emu.reg_read(self.PC)
             raise RuntimeError(f"Emulation crashed at 0x{pc:X}") from e
 
     def start_and_fault(self, fault_model, fault_index: int, begin: int, end: int, *args, **kwargs) -> int:
@@ -262,7 +285,7 @@ class rainbowBase:
         rainbow.start(). It returns the memory address at which the fault was
         applied.
 
-        Injection faults can often led to invalid instructions which are raised
+        Injection faults can often led to invalid instruction which are raised
         as exceptions during emulation.
 
         Example:
@@ -288,7 +311,7 @@ class rainbowBase:
 
         # PewPew!
         fault_model(self)
-        if self.trace:
+        if self.print_config & Print.Faults:
             print(color("YELLOW", f" /!\\ {fault_model.__name__} /!\\ "), end="")
 
         # Emulation after fault
@@ -296,75 +319,67 @@ class rainbowBase:
         return pc_fault
 
     def setup(self):
-        """ Sets up a stack and adds base hooks to the engine """
-        ## Add a stack
-        self.map_space(*self.STACK)
-
-        ## Add hooks
+        """Add base hooks to the engine."""
+        # We need the block hook only if we are
+        # printing functions or need to handle stubs.
+        # if self.print_config & Print.Functions or self.allow_stubs:
         self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
-            HookWeakMethod(self.block_handler))
-        if self.sca_mode:
-            if self.sca_HD:
-                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                    regs_hd_sum_trace, self)
-            else:
-                self.ct_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                    regs_hw_sum_trace, self)
-            self.tm_hook = self.emu.hook_add(
-                uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
-                HookWeakMethod(self.sca_trace_mem))
-        else:
-            self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                HookWeakMethod(self.code_trace))
-            self.mem_access_hook = self.emu.hook_add( uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
-                HookWeakMethod(self.trace_mem))
+                                            HookWeakMethod(self._block_hook))
 
-    def remove_hooks(self):
-        self.emu.hook_del(self.mem_access_hook)
-        self.emu.hook_del(self.code_hook)
-        self.emu.hook_del(self.block_hook)
+        # We need the mem hook only if we are
+        # printing memory or tracing memory values or addresses.
+        if self.print_config & Print.Memory or self.trace_config.mem_value or self.trace_config.mem_address:
+            self.mem_hook = self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                                              HookWeakMethod(self._mem_hook))
+
+        # We need the code hook only if we are
+        # printing code or registers, tracing registers or instruction or need to handle breakpoints.
+        if self.print_config & (
+                Print.Code | Print.Registers) or self.trace_config.register or self.trace_config.instructions or self.allow_breakpoints:
+            self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
+                                               HookWeakMethod(self._code_hook))
+
+    def remove_bkpt(self, address):
+        if not self.allow_breakpoints:
+            raise ValueError("Cannot use breakpoints, allow_breakpoints is False.")
+        self.breakpoints.remove(address)
 
     def add_bkpt(self, address):
-        if address not in self.breakpoints:
-            self.breakpoints += [address]
+        if not self.allow_breakpoints:
+            raise ValueError("Cannot use breakpoints, allow_breakpoints is False.")
+        self.breakpoints.add(address)
 
-    def bkpt_dump(self):
-        """ Dumps all regs when a breakpoint is hit """
-        for reg in self.INTERNAL_REGS:
-            print(f"{reg} : {self[reg]:x}")
+    @abc.abstractmethod
+    def reset_stack(self):
+        """Reset the stack pointer."""
+        raise NotImplementedError
+
+    def reset_regs(self):
+        """Reset the state of the internal registers to zero."""
+        for r in self.INTERNAL_REGS:
+            self[r] = 0
+
+    def reset_trace(self):
+        """Reset the traced attributes."""
+        self.last_reg_values.clear()
+        self.last_regs = []
+        self.last_value = 0
+        self.last_address = 0
+        self.trace = []
+
+    @abc.abstractmethod
+    def return_force(self):
+        """Perform a simulated function return."""
+        raise NotImplementedError
 
     def reset(self):
         """ Reset side-channel trace, zeroize registers and reset stack """
-        if self.sca_mode:
-            self.trace_reset()
-        for r in self.INTERNAL_REGS:
-            self[r] = 0
+        self.reset_trace()
+        self.reset_regs()
         self.reset_stack()
 
-    def sca_trace_mem(self, uci, access, address, size, value, user_data):
-        """ Hook that stores memory accesses in side-channel mode. Stores read and written values """
-        if self.mem_trace:
-            if access == uc.UC_MEM_WRITE:
-                self.sca_values_trace.append(value)
-            else:
-                self.sca_values_trace.append( int.from_bytes( uci.mem_read(address, size), self.endianness, signed=False))
-
-    def trace_mem(self, uci, access, address, size, value, user_data):
-        """ Hook that shows a visual trace of memory accesses in the form '[address written to] <- value written' or 'value read <- [address read]' """
-        if self.mem_trace:
-            if address in self.OTHER_REGS_NAMES.keys():
-                addr = self.OTHER_REGS_NAMES[address]
-            else:
-                addr = color("BLUE", f"0x{address:08x}")
-            if access == uc.UC_MEM_WRITE:
-                val = color("CYAN", f"{value:x}")
-                print(f"  [{addr}] <- {val} ", end=" ")
-            else:
-                val = int.from_bytes(uci.mem_read(address, size), self.endianness)
-                val = color("CYAN", f"{val:8x}")
-                print(f"  {val} <- [{addr}]", end=" ")
-
     # Least-recently used cache for Capstone calls to disasm or disasm_lite
+    # TODO: Move to separate file with functions.
     @staticmethod
     @functools.lru_cache(maxsize=4096)
     def _disassemble_cache(call: Callable, instruction: bytes, addr: int):
@@ -391,22 +406,114 @@ class rainbowBase:
         """ Pretty-print assembly using pygments syntax highlighting """
         line = (
             highlight(f"{ins:<6}  {op_str:<20}", self.asm_hl, self.asm_fmt)
-            .decode()
-            .strip("\n")
+                .decode()
+                .strip("\n")
         )
         print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
 
-    def code_trace(self, uci, address, size, data):
-        """ 
-        Hook that traces modified register values in side-channel mode. 
-        
-        Capstone 4's 'regs_access' method is used to find out which registers are explicitly modified by an instruction. 
-        Once found, the information is stored in self.reg_leak to be stored at the next instruction, once the unicorn engine actually performed the current instruction. 
+    def hook_prolog(self, name, fn):
         """
-        self.profile_counter += 1
+        Add a call to function 'fn' when 'name' is called during execution.
+        After executing 'fn, execution resumes into 'name'.
+        """
+        if not self.allow_stubs:
+            raise ValueError("Cannot use stubs, allow_stubs is False.")
+        if name not in self.functions.keys():
+            raise IndexError(f"'{name}' could not be found.")
+
+        def to_hook(x):
+            if fn is not None:
+                fn(x)
+            return False
+
+        self.stubbed_functions[name] = to_hook
+
+    def hook_bypass(self, name, fn=None):
+        """
+        Add a call to function 'fn' when 'name' is called during execution.
+        After executing 'fn', execution returns to the caller.
+        """
+        if not self.allow_stubs:
+            raise ValueError("Cannot use stubs, allow_stubs is False.")
+        if name not in self.functions.keys():
+            raise IndexError(f"'{name}' could not be found.")
+
+        def to_hook(x):
+            if fn is not None:
+                fn(x)
+            return True
+
+        self.stubbed_functions[name] = to_hook
+
+    def remove_hook(self, name):
+        """Remove the hook."""
+        if not self.allow_stubs:
+            raise ValueError("Cannot use stubs, allow_stubs is False.")
+        del self.stubbed_functions[name]
+
+    def remove_hooks(self):
+        """Remove the hooked functions."""
+        if not self.allow_stubs:
+            raise ValueError("Cannot use stubs, allow_stubs is False.")
+        self.stubbed_functions = {}
+
+    def _block_hook(self, _uci, address: int, _size, _):
+        """
+        Hook called on every jump to a basic block that checks if a known
+        address+function is redefined in the user's python script and if so,
+        calls that instead.
+        """
+        if address in self.function_names and (self.allow_stubs or self.print_config & Print.Functions):
+            # Handle the function call printing
+            f = self.function_names[address]
+            if self.print_config & Print.Functions:
+                print(f"{color('MAGENTA', f)}(...) @ 0x{address:x}")
+
+            # Handle the stubs
+            if f in self.stubbed_functions:
+                r = self.stubbed_functions[f](self)
+                if r:
+                    self.return_force()
+
+    def _mem_hook(self, uci, access, address, size, value, _):
+        # Get the value
+        if access == uc.UC_MEM_READ:
+            access_type = "mem_read"
+            value = int.from_bytes(uci.mem_read(address, size), self.ENDIANNESS, signed=False)
+        else:
+            access_type = "mem_write"
+
+        # Handle the mem addr/value printing
+        if self.print_config & Print.Memory:
+            if address in self.OTHER_REGS:
+                addr = self.OTHER_REGS[address]
+            else:
+                addr = color("BLUE", f"0x{address:08x}")
+            val = color("CYAN", f"{value:8x}")
+            if access == uc.UC_MEM_WRITE:
+                print(f"  [{addr}] <- {val} ", end=" ")
+            else:
+                print(f"  {val} <- [{addr}]", end=" ")
+
+        # Handle the mem addr/value tracing
+        ma = self.trace_config.mem_address
+        mv = self.trace_config.mem_value
+        if ma or mv:
+            event = {"type": access_type}
+            if ma:
+                event["address"] = ma(address, self.last_address)
+                self.last_address = address
+            if mv:
+                event["value"] = mv(value, self.last_value)
+                self.last_value = value
+            self.trace.append(event)
+
+    def _code_hook(self, uci, address, size, _):
+        # Handle the breakpoints
         if address in self.breakpoints:
             print(f"\n*** Breakpoint hit at 0x{address:x} ***")
-            self.bkpt_dump()
+            for reg in self.INTERNAL_REGS:
+                print(f"{reg} : {self[reg]:x}")
 
             while True:
                 s = input("Press Enter to continue, or Input an address and a size to display an address: ")
@@ -414,86 +521,73 @@ class rainbowBase:
                 if s == '':
                     break
                 try:
-                    address = eval("0x"+s.split(" ")[0])
+                    address = eval("0x" + s.split(" ")[0])
                     size = eval(s.split(" ")[1])
-                    print("Addr=%s, size=%d"%(hex(address), size), bytes(self[address:address+size]))
+                    print("Addr=%s, size=%d" % (hex(address), size), bytes(self[address:address + size]))
                 except Exception as e:
                     print("Error:", e)
                     print("Usage: type \"DEAD0000 32\" for instance")
                     continue
 
-
-        if self.trace:
-            if self.reg_leak is not None:
-                for x in self.reg_leak[1]:
+        # Handle the register printing
+        ins = None
+        regs = None
+        if self.print_config & Print.Registers:
+            if self.last_regs:
+                for x in self.last_regs:
                     print(f" {x} = {self[x]:08x} ", end="")
-
-            if self.trace_regs:
-                ins = self.disassemble_single_detailed(address, size)
-                regs_read, regs_written = ins.regs_access()
-                if len(regs_written) > 0:
-                    self.reg_leak = (address, list(map(ins.reg_name, regs_written)))
-                else:
-                    self.reg_leak = None
-                self.print_asmline(address, ins.mnemonic, ins.op_str)
+            ins = self.disassemble_single_detailed(address, size)
+            _, regs_written = ins.regs_access()
+            if regs_written:
+                regs = list(map(ins.reg_name, regs_written))  # type: ignore
             else:
-                adr, size, ins, op_str = self.disassemble_single(address, size)
-                self.print_asmline(adr, ins, op_str)
+                regs = None
 
-    def hook_prolog(self, name, fn):
-        """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn, execution resumes into 'name' """
-        if name not in self.functions.keys():
-            raise IndexError(f"'{name}' could not be found.")
+        # Handle the code printing
+        if self.print_config & Print.Code:
+            if ins is None:
+                adr, size, _ins, op_str = self.disassemble_single(address, size)
+                self.print_asmline(adr, _ins, op_str)
+            else:
+                self.print_asmline(address, ins.mnemonic, ins.op_str)
 
-        def to_hook(x):
-            fn(x)
-            return False
+        # Handle the register tracing
+        event = None
+        if self.trace_config.register:
+            # This hook gets called before an instruction executes, so
+            #  - regs are registers written by this instr, yet their values right now are not changed
+            #  - reg_values are register values as they are now (after the previous instruction)
+            #  - last_regs are registers written by the previous instruction
+            #  - last_reg_values are register values as they were before the previous instruction
+            #
+            # So we need to go over last_regs, get their prev values from last_reg_values and get their current values.
+            if self.last_regs:
+                reg_values = {r: uci.reg_read(self.REGS[r]) for r in self.last_regs}
+                leak = sum(
+                    self.trace_config.register(reg_values[r], self.last_reg_values.get(r, 0)) for r in self.last_regs)
+                event = {"type": "code", "register": leak}
 
-        self.stubbed_functions[name] = to_hook
+                # Store the updated reg values into last_reg_values.
+                for r, val in reg_values.items():
+                    self.last_reg_values[r] = val
 
-    def hook_bypass(self, name, fn=None):
-        """ Add a call to function 'fn' when 'name' is called during execution. After executing 'fn', execution returns to the caller """
-        if name not in self.functions.keys():
-            raise IndexError(f"'{name}' could not be found.")
+            # If we haven't disassembled the current instruction to store the regs written to last_regs we do it.
+            if ins is None:
+                ins = self.disassemble_single_detailed(address, size)
+                _, regs_written = ins.regs_access()
+                if regs_written:
+                    regs = list(filter(lambda r: r not in self.IGNORED_REGS and (
+                                not self.trace_config.ignored_registers or r not in self.trace_config.ignored_registers),
+                                       map(ins.reg_name, regs_written)))  # type: ignore
+                else:
+                    regs = None
 
-        if fn is None:
-            fn = lambda x:x
-
-        def to_hook(x):
-            fn(x)
-            return True
-
-        self.stubbed_functions[name] = to_hook
-
-    def return_force(self):
-        """ Performs a simulated function return """
-        raise NotImplementedError
-
-    def block_handler(self, _uci, address: int, _size, _user_data):
-        """
-        Hook called on every jump to a basic block that checks if a known
-        address+function is redefined in the user's python script and if so,
-        calls that instead
-        """
-        if address in self.function_names.keys():
-            f = self.function_names[address]
-            if self.function_calls:
-                print(f"\n[{self.profile_counter:>8} ins]   {color('MAGENTA',f)}(...) @ 0x{address:x}", end=" ")
-                self.profile_counter = 0
-
-            if f in self.stubbed_functions:
-                r = self.stubbed_functions[f](self)
-                if r:
-                    self.return_force()
-
-    def load_other_regs_from_pickle(self, filename):
-        """
-        Load OTHER_REGS and OTHER_REGS_NAMES from a dictionary in a pickle file.
-        :param filename: pickle file path.
-        """
-        import pickle
-        with open(filename, 'rb') as f:
-            self.OTHER_REGS_NAMES = pickle.load(f)
-        self.OTHER_REGS = {
-            self.OTHER_REGS_NAMES[x]: x for x in self.OTHER_REGS_NAMES.keys()
-        }
+        if self.trace_config.instructions:
+            if ins is None:
+                ins = self.disassemble_single_detailed(address, size)
+            if event is None:
+                event = {"type": "code"}
+            event["instruction"] = f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}"
+        if event is not None:
+            self.trace.append(event)
+        self.last_regs = regs

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # This file contains the ripped_out parts of the binary
 # that we'd like to emulate and trace
-
+import numpy as np
+from rainbow import Identity, HammingWeight, TraceConfig
 from rainbow.generics import rainbow_x64
 from binascii import unhexlify
+from visplot import plot
 
 # Some external function calls need to be stubbed
 # We just force them to return 0
@@ -24,7 +26,10 @@ def srand(em):
 
 # Set up a x64 emulator in side-channel mode (no text output) and
 # pass the previous functions to the redefined functions dictionary
-e = rainbow_x64(sca_mode=True)
+# We'd like to trace everything we can
+# - memory accesses
+# - modified registers
+e = rainbow_x64(trace_config=TraceConfig(mem_value=HammingWeight(), register=HammingWeight()), allow_stubs=True)
 e.stubbed_functions = {
     "time": time,
     "clock_gettime": clock_gettime,
@@ -33,12 +38,7 @@ e.stubbed_functions = {
 
 # load the elf
 e.load("ctf2", typ=".elf")
-
-# We'd like to trace everything we can
-# - memory accesses
-# - modified registers
-e.mem_trace = 1
-e.trace_regs = 1
+e.setup()
 
 
 def main_func(inputt):
@@ -109,8 +109,15 @@ def main_func(inputt):
     # so let's set a limit to 5000
     e.start(0x10BA, 0x13DA, count=5000)
 
-    return e.sca_address_trace, e.sca_values_trace
+    return e.trace
 
 
 if __name__ == "__main__":
-    addr, trace = main_func("aa" * 16)
+    trace = main_func("aa" * 16)
+
+    curves = np.array([
+        [event["value"] if "value" in event else 0 for event in trace],
+        [event["register"] if "register" in event else 0 for event in trace]
+    ])
+    plot(curves, labels=["Memory value HW", "Register HW"])
+

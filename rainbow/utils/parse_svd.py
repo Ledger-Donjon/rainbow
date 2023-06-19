@@ -16,12 +16,12 @@
 #
 # Copyright 2019 Victor Servant, Ledger SAS
 
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree
 
 
 def parse_svd(svdfile):
     """ Parse an .svd file for special register names and addresses into a dictionary """
-    tree = ET.parse(svdfile)
+    tree = ElementTree.parse(svdfile)
     root = tree.getroot()
     names = [e.tag for e in root]
     peripherals = root[names.index("peripherals")]
@@ -39,10 +39,3 @@ def parse_svd(svdfile):
                 offs = dr.get("addressOffset")
                 r[basename + "_" + name] = int(addr, 0) + int(offs, 0)
     return r
-
-
-def export(r, outf):
-    import pickle
-
-    with open(outf, "wb") as out:
-        pickle.dump(r, out)

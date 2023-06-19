@@ -15,23 +15,42 @@
 #
 #
 # Copyright 2019 Victor Servant, Ledger SAS
+# Copyright 2023 Jan Jancar
 
 from setuptools import setup, find_packages
 
 setup(
     name="rainbow",
+    version="2.0",
+    author="Victor Servant",
+    author_email="victor.servant@ledger.fr",
+    description="Generic Unicorn tracer for side-channels",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    packages=find_packages(),
+    package_data={'': ['*.pickle']},
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+        "Topic :: Security",
+        "Topic :: Security :: Cryptography",
+        "Topic :: System :: Emulators",
+        "Programming Language :: Python :: 3",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research"
+    ],
+    python_requires='>=3.7',
     install_requires=[
-        "unicorn~=1.0",
+        "unicorn>=2.0.1",
         "capstone>=4.0.0",
         "lief>=0.10.0",
         "intelhex",
         "colorama",
         "pygments",
+        "numpy",
+        "PyQt5"
     ],
-    packages=find_packages(),
-    package_data={'': ['*.pickle']},
-    version=1.0,
-    author="Victor Servant",
-    author_email="victor.servant@ledger.fr",
-    description="Generic Unicorn tracer for side-channels",
+    extras_require={
+        "examples": ["visplot @ git+https://github.com/Ledger-Donjon/visplot#egg=visplot", "lascar", "pycryptodome"]
+    }
 )

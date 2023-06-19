@@ -15,42 +15,33 @@
 #
 #
 # Copyright 2019 Victor Servant, Ledger SAS
+# Copyright 2023 Jan Jancar
 
 import unicorn as uc
 import capstone as cs
-from rainbow.rainbow import rainbowBase
-from rainbow.color_functions import color
+from rainbow.rainbow import Rainbow
 
 
-class rainbow_m68k(rainbowBase):
-
+class rainbow_m68k(Rainbow):
+    UC_ARCH = uc.UC_ARCH_M68K
+    UC_MODE = uc.UC_MODE_BIG_ENDIAN
+    CS_ARCH = cs.CS_ARCH_M68K
+    CS_MODE = cs.CS_MODE_M68K_000
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"d{i}" for i in range(8)] + [f"a{i}" for i in range(8)] + ["pc"]
-    TRACE_DISCARD = []
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.emu = uc.Uc(uc.UC_ARCH_M68K, uc.UC_MODE_BIG_ENDIAN)
-        self.disasm = cs.Cs(cs.CS_ARCH_M68K, cs.CS_MODE_M68K_000)
-        self.disasm.detail = True
-        self.word_size = 4
-        self.endianness = "big"
-        self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
-        self.page_shift = self.page_size.bit_length() - 1
-        self.pc = uc.m68k_const.UC_M68K_REG_PC
-
-        known_regs = [i[len('UC_M68K_REG_'):] for i in dir(uc.m68k_const) if '_REG' in i]
-        self.reg_map = {r.lower(): getattr(uc.m68k_const, 'UC_M68K_REG_'+r) for r in known_regs}
-
-        self.setup()
-
-        self.reset_stack()
+    IGNORED_REGS = set()
+    WORD_SIZE = 4
+    ENDIANNESS = "big"
+    PC = uc.m68k_const.UC_M68K_REG_PC
+    REGS = {name[len('UC_M68K_REG_'):].lower(): getattr(uc.m68k_const, name) for name in dir(uc.m68k_const) if
+            "_REG" in name}
+    OTHER_REGS = {}
 
     def reset_stack(self):
         self.emu.reg_write(uc.m68k_const.UC_M68K_REG_A7, self.STACK_ADDR)
 
     def return_force(self):
         ret = self[self["a7"]]
-        self["a7"] += self.word_size
+        self["a7"] += self.WORD_SIZE
         self["pc"] = int.from_bytes(ret, "big")

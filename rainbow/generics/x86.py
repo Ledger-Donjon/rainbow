@@ -15,37 +15,28 @@
 #
 #
 # Copyright 2019 Victor Servant, Ledger SAS
+# Copyright 2023 Jan Jancar
 
 import unicorn as uc
 import capstone as cs
-from rainbow.rainbow import rainbowBase
-from rainbow.color_functions import color
+from rainbow.rainbow import Rainbow
 
 
-class rainbow_x86(rainbowBase):
-
+class rainbow_x86(Rainbow):
+    UC_ARCH = uc.UC_ARCH_X86
+    UC_MODE = uc.UC_MODE_32
+    CS_ARCH = cs.CS_ARCH_X86
+    CS_MODE = cs.CS_MODE_32
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["eax", "ebx", "ecx", "edx", "esi", "edi", "eip", "ebp"]
-    TRACE_DISCARD = ["eflags"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.emu = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_32)
-        self.disasm = cs.Cs(cs.CS_ARCH_X86, cs.CS_MODE_32)
-        self.disasm.detail = True
-        self.word_size = 4
-        self.endianness = "little"
-        self.page_size = self.emu.query(uc.UC_QUERY_PAGE_SIZE)
-        self.page_shift = self.page_size.bit_length() - 1
-        self.pc = uc.x86_const.UC_X86_REG_EIP
-
-        known_regs = [i[len('UC_X86_REG_'):] for i in dir(uc.x86_const) if '_REG' in i]
-        self.reg_map = {r.lower(): getattr(uc.x86_const, 'UC_X86_REG_'+r) for r in known_regs}
-
-        self.setup()
-
-        self.reset_stack()
+    IGNORED_REGS = {"eflags"}
+    WORD_SIZE = 4
+    ENDIANNESS = "little"
+    PC = uc.x86_const.UC_X86_REG_EIP
+    REGS = {name[len('UC_X86_REG_'):].lower(): getattr(uc.x86_const, name) for name in dir(uc.x86_const) if
+            "_REG" in name}
+    OTHER_REGS = {}
 
     def reset_stack(self):
         self.emu.reg_write(uc.x86_const.UC_X86_REG_EBP, self.STACK_ADDR)
@@ -53,5 +44,5 @@ class rainbow_x86(rainbowBase):
 
     def return_force(self):
         ret = self[self["esp"]]
-        self["esp"] += self.word_size
+        self["esp"] += self.WORD_SIZE
         self["eip"] = int.from_bytes(ret, "little")

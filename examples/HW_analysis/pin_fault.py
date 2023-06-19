@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import numpy as np
+
+from rainbow import HammingWeight, TraceConfig
 from rainbow.devices.stm32 import rainbow_stm32f215 as rainbow_stm32
 from rainbow.fault_models import fault_skip
 from rainbow.utils.plot import viewer
@@ -15,13 +17,15 @@ INPUT_PIN = "0000"
 
 print("Setting up emulator")
 
-e = rainbow_stm32(sca_mode=True)
+e = rainbow_stm32()
 e.load("trezor.elf")
-e.trace = 0
+e.setup()
+
 
 def result(u):
-  """ Test whether execution was faulted """
-  return u['r0'] != 0 and u['pc'] == 0xaaaaaaaa
+    """ Test whether execution was faulted """
+    return u['r0'] != 0 and u['pc'] == 0xaaaaaaaa
+
 
 # as in the side-channel example, this is the location of the reference
 # pin in Flash
@@ -42,25 +46,28 @@ print("r0 should be 0 at the end of the function if no fault occurred")
 for i in range(1, N):
     e.reset()
 
-    ## The first fault might not actually work depending
-    ## on the value of r5 when calling. Remove comment to observe
+    # The first fault might not actually work depending
+    # on the value of r5 when calling. Remove comment to observe
     # e['r5'] = 0x60000000
 
     e['r0'] = 0xcafecafe
     e['lr'] = 0xaaaaaaaa
 
+    pc = 0
     try:
-      # Run i instructions, then inject skip, then run
-      pc = e.start_and_fault(fault_skip, i, e.functions['storage_containsPin'], 0xaaaaaaaa, count=100)
+        # Run i instruction, then inject skip, then run
+        pc = e.start_and_fault(fault_skip, i, e.functions['storage_containsPin'], 0xaaaaaaaa, count=100)
     except RuntimeError:
-      # Fault crashed the emulation
-      total_crashes += 1
-      crash_trace[i] = 1
-      d = e.disassemble_single(pc, 4)
-      e.print_asmline(pc, d[2], d[3])
-      pc += d[1]
-      print("crashed")
-      continue
+        # Fault crashed the emulation
+        total_crashes += 1
+        crash_trace[i] = 1
+        d = e.disassemble_single(pc, 4)
+        e.print_asmline(pc, d[2], d[3])
+        pc += d[1]
+        print("crashed")
+        continue
+    except IndexError:
+        pass
 
     # Print current instruction
     d = e.disassemble_single(pc, 4)
@@ -68,27 +75,25 @@ for i in range(1, N):
     pc += d[1]
 
     if result(e):
-      # Successful fault
-      total_faults += 1
-      fault_trace[i] = 1
-      print(" <-- r0 =", hex(e['r0']), end="")
+        # Successful fault
+        total_faults += 1
+        fault_trace[i] = 1
+        print(" <-- r0 =", hex(e['r0']), end="")
 
 print(f"\n=== {total_faults} faults found ===")
 print(f"=== {total_crashes} crashes ===")
 
 # get an 'original' side channel trace
-e.reset()
-
-e.trace = 1
-e.trace_regs = 1
-e.mem_trace = 0
+e = rainbow_stm32(trace_config=TraceConfig(register=HammingWeight(), instruction=True))
+e.load("trezor.elf")
+e.setup()
 
 e['r0'] = 0xcafecafe
 e['lr'] = 0xaaaaaaaa
 
 e.start(e.functions['storage_containsPin'], 0xaaaaaaaa)
 
-trace = np.array(e.sca_values_trace, dtype=np.uint8)
+trace = np.array([event["register"] for event in e.trace if "register" in event], dtype=np.uint8)
 fault_trace = trace.max() - np.array(fault_trace, dtype=np.uint8)[:trace.shape[0]] * trace.max()
 
-viewer(e.sca_address_trace, np.array([trace, fault_trace]))
+viewer([event["instruction"] for event in e.trace], np.array([trace, fault_trace]))

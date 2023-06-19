@@ -17,6 +17,8 @@
 # Copyright 2019 Victor Servant, Ledger SAS
 
 import os
+from typing import Optional
+
 from .elfloader import elfloader
 from .hexloader import hexloader
 from .peloader import peloader
@@ -24,7 +26,7 @@ from .peloader import peloader
 LOADERS = {".hex": hexloader, ".elf": elfloader, ".so": elfloader, ".exe": peloader}
 
 
-def load_selector(filename, rainbow_instance, typ=None, *args, **kwargs):
+def load_selector(filename, rainbow_instance, typ=None, *args, **kwargs) -> Optional[int]:
     if typ is None:
         ext = os.path.splitext(filename)[1]
         loader = LOADERS[ext]
