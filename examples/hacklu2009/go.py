@@ -42,7 +42,7 @@ class CrackMeContainer(lascar.AbstractContainer):
 
 N = 20
 cpa_engines = [
-    lascar.CpaEngine(f'cpa{i}', lambda plaintext, key_byte, index=i: sbox[plaintext[index] ^ key_byte], range(256)) for
+    lascar.CpaEngine(lambda plaintext, key_byte, index=i: sbox[plaintext[index] ^ key_byte], range(256)) for
     i in range(16)]
 
 s = lascar.Session(CrackMeContainer(N), engines=cpa_engines, name="lascar CPA").run()
