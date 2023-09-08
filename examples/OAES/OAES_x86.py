@@ -9,7 +9,7 @@ from lascar import Session, TraceBatchContainer
 
 
 def generate_targetf():
-    e = rainbow_x86(trace_config=TraceConfig(register=HammingWeight(), mem_value=Identity()))
+    e = rainbow_x86(trace_config=TraceConfig(register=HammingWeight(), mem_value=Identity(), instruction=True, mem_address=Identity()))
     e.load("libnative-lib_x86.so")
     e.setup()
 
@@ -25,9 +25,13 @@ def generate_targetf():
         e[e.STACK_ADDR + 4] = 0xBADC0FE0
         e[e.STACK_ADDR + 8] = 0xA5A5A5A5
         e.start(e.functions[target_func], 0, count=length)
-
-        return [event["register"] if event["type"] == "reg" else event["mem_value"] for event in e.trace]
-
+        trace_data = []
+        for event in e.trace:
+            if "register" in event.keys():
+                trace_data.append(event["register"])
+            elif "value" in event.keys():
+                trace_data.append(event["value"])
+        return trace_data
     return e, targetf
 
 
@@ -58,9 +62,17 @@ def get_traces(targetf, nb, nb_samples):
 
 
 if __name__ == "__main__":
-    _, func = generate_targetf()
+    e, func = generate_targetf()
     values, traces = get_traces(func, 10, 1000000)
 
     t = TraceBatchContainer(traces, values)
     s = Session(t)
     s.run()
+
+    trace_ins = []
+    for event in e.trace:
+        if "instruction" in event.keys():
+            trace_ins.append(event["instruction"])
+
+    from rainbow.utils.plot import viewer
+    viewer(trace_ins, s["var"].finalize())
