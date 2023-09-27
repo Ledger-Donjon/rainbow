@@ -46,6 +46,6 @@ def test_remove_hooks():
     emu.setup()
 
     emu.hook_bypass("strtol")
-    assert "strtol" in emu.stubbed_functions
+    assert 0x202fa0 in emu.stubbed_functions
     emu.remove_hooks()
-    assert "strtol" not in emu.stubbed_functions
+    assert 0x202fa0 not in emu.stubbed_functions
