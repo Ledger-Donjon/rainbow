@@ -19,17 +19,19 @@
 import os
 from typing import Optional
 
+from .cleloader import cleloader
 from .elfloader import elfloader
 from .hexloader import hexloader
 from .peloader import peloader
 
-LOADERS = {".hex": hexloader, ".elf": elfloader, ".so": elfloader, ".exe": peloader}
+LOADERS = {".hex": hexloader, ".elf": elfloader, ".so": cleloader, ".exe": peloader}
 
 
 def load_selector(filename, rainbow_instance, typ=None, *args, **kwargs) -> Optional[int]:
-    if typ is None:
-        ext = os.path.splitext(filename)[1]
-        loader = LOADERS[ext]
-    else:
-        loader = LOADERS[typ]
+    """Select the appropriate loader.
+
+    Default to CLE loader if unknown as it has the most chance of succeeding.
+    """
+    typ = typ if typ is not None else os.path.splitext(filename)[1]
+    loader = LOADERS.get(typ, cleloader)
     return loader(filename, rainbow_instance, *args, **kwargs)

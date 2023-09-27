@@ -43,6 +43,7 @@ setup(
     install_requires=[
         "unicorn>=2.0.1",
         "capstone>=4.0.0",
+        "cle>=9.2",
         "lief>=0.10.0",
         "intelhex",
         "pygments",
