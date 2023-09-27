@@ -418,15 +418,24 @@ class Rainbow(abc.ABC):
         """
         if not self.allow_stubs:
             raise ValueError("Cannot use stubs, allow_stubs is False.")
-        if name not in self.functions.keys():
-            raise IndexError(f"'{name}' could not be found.")
 
         def to_hook(x):
             if fn is not None:
                 fn(x)
             return False
 
-        self.stubbed_functions[name] = to_hook
+        if isinstance(name, str):
+            # Stub all function addresses matching this name
+            addrs = [a for a, n in self.function_names.items() if n == name]
+            if not addrs:
+                raise IndexError(f"'{name}' could not be found.")
+            for addr in addrs:
+                self.stubbed_functions[addr] = to_hook
+        elif isinstance(name, int):
+            # Name is an address
+            self.stubbed_functions[name] = to_hook
+        else:
+            raise TypeError("name should be function name or address")
 
     def hook_bypass(self, name, fn=None):
         """
@@ -435,15 +444,24 @@ class Rainbow(abc.ABC):
         """
         if not self.allow_stubs:
             raise ValueError("Cannot use stubs, allow_stubs is False.")
-        if name not in self.functions.keys():
-            raise IndexError(f"'{name}' could not be found.")
 
         def to_hook(x):
             if fn is not None:
                 fn(x)
             return True
 
-        self.stubbed_functions[name] = to_hook
+        if isinstance(name, str):
+            # Stub all function addresses matching this name
+            addrs = [a for a, n in self.function_names.items() if n == name]
+            if not addrs:
+                raise IndexError(f"'{name}' could not be found.")
+            for addr in addrs:
+                self.stubbed_functions[addr] = to_hook
+        elif isinstance(name, int):
+            # Name is an address
+            self.stubbed_functions[name] = to_hook
+        else:
+            raise TypeError("name should be function name or address")
 
     def remove_hook(self, name):
         """Remove the hook."""
@@ -463,16 +481,20 @@ class Rainbow(abc.ABC):
         address+function is redefined in the user's python script and if so,
         calls that instead.
         """
+        # Print function calls
         if address in self.function_names and (self.allow_stubs or self.print_config & Print.Functions):
             # Handle the function call printing
             f = self.function_names[address]
             if self.print_config & Print.Functions:
                 print(f"{color('MAGENTA', f)}(...) @ 0x{address:x}")
 
-            # Handle the stubs
-            if f in self.stubbed_functions:
-                r = self.stubbed_functions[f](self)
+        # If stub is enabled and set at this address, run it
+        if self.allow_stubs:
+            stub_func = self.stubbed_functions.get(address)
+            if stub_func is not None:
+                r = stub_func(self)
                 if r:
+                    # If stub returns True, then make the function return early
                     self.return_force()
 
     def _mem_hook(self, uci, access, address, size, value, _):
