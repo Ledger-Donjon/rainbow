@@ -15,24 +15,25 @@ from rainbow.utils.plot import viewer
 STORED_PIN = "1874"
 INPUT_PIN = "0000"
 
-print("Setting up emulator")
+def setup_emulator(trace_config=TraceConfig()) -> rainbow_stm32:
+    print("Setting up emulator")
+    e = rainbow_stm32(trace_config=trace_config)
+    e.load("trezor.elf")
+    e.setup()
 
-e = rainbow_stm32()
-e.load("trezor.elf")
-e.setup()
+    # as in the side-channel example, this is the location of the reference
+    # pin in Flash
+    e[0x08008110 + 0x189] = bytes(STORED_PIN + "\x00", "ascii")
 
+    # Pick any address for the input pin...
+    e[0xcafecafe] = bytes(INPUT_PIN + "\x00", "ascii")
+
+    return e
 
 def result(u):
     """ Test whether execution was faulted """
     return u['r0'] != 0 and u['pc'] == 0xaaaaaaaa
 
-
-# as in the side-channel example, this is the location of the reference
-# pin in Flash
-e[0x08008110 + 0x189] = bytes(STORED_PIN + "\x00", "ascii")
-
-# Pick any address for the input pin...
-e[0xcafecafe] = bytes(INPUT_PIN + "\x00", "ascii")
 
 N = 57
 
@@ -41,6 +42,7 @@ total_crashes = 0
 fault_trace = [0] * N
 crash_trace = [0] * N
 
+e = setup_emulator()
 print("Loop on all possible skips")
 print("r0 should be 0 at the end of the function if no fault occurred")
 for i in range(1, N):
@@ -84,9 +86,7 @@ print(f"\n=== {total_faults} faults found ===")
 print(f"=== {total_crashes} crashes ===")
 
 # get an 'original' side channel trace
-e = rainbow_stm32(trace_config=TraceConfig(register=HammingWeight(), instruction=True))
-e.load("trezor.elf")
-e.setup()
+e = setup_emulator(trace_config=TraceConfig(register=HammingWeight(), instruction=True))
 
 e['r0'] = 0xcafecafe
 e['lr'] = 0xaaaaaaaa
