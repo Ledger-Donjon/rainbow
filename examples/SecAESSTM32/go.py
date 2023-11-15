@@ -10,7 +10,7 @@ from visplot import plot
 from binascii import hexlify
 from rainbow import TraceConfig, HammingWeight, Print
 from Crypto.Cipher import AES
-from rainbow.generics import rainbow_arm
+from rainbow.devices import rainbow_stm32f215
 
 
 def f_aes(e, key, input_):
@@ -36,7 +36,7 @@ def f_aes(e, key, input_):
     e[input_p] = input_
     e['r3'] = input_p
 
-    # output 
+    # output
     output_p = 0xdead0000
     e[output_p] = 0
     # ARM calling convention : 4th+ parameter is on stack
@@ -59,7 +59,7 @@ def f_aes(e, key, input_):
 
 
 if __name__ == "__main__":
-    e = rainbow_arm(print_config=Print.Code | Print.Functions, trace_config=TraceConfig(register=HammingWeight()))
+    e = rainbow_stm32f215(print_config=Print.Functions, trace_config=TraceConfig(register=HammingWeight()))
     e.load('firmware.elf')
     e.setup()
 
