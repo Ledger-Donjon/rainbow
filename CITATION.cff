@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Servant"
+  given-names: "Victor"
+  orcid: "https://orcid.org/0000-0002-5113-9737"
+title: "Rainbow - Side-Channel and Fault Injection Simulator"
+version: 1.0.0
+date-released: 2019-02-07
+url: "https://github.com/Ledger-Donjon/rainbow"
