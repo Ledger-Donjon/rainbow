@@ -20,11 +20,9 @@ import os
 from typing import Optional
 
 from .cleloader import cleloader
-from .elfloader import elfloader
 from .hexloader import hexloader
-from .peloader import peloader
 
-LOADERS = {".hex": hexloader, ".elf": elfloader, ".so": cleloader, ".exe": peloader}
+LOADERS = {".hex": hexloader, ".elf": cleloader, ".so": cleloader, ".exe": cleloader}
 
 
 def load_selector(filename, rainbow_instance, typ=None, *args, **kwargs) -> Optional[int]:
