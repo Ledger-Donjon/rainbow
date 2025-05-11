@@ -24,15 +24,11 @@ from enum import auto, Flag
 from typing import Callable, Tuple, Optional, List, Dict, Set, Any
 import capstone as cs
 import unicorn as uc
-from pygments import highlight
-from pygments.formatters.terminal import TerminalFormatter
-from pygments.lexers.asm import NasmLexer
-# TODO: Add note about colorama use. Call init in example code.
 from unicorn import UcError
 
 from .leakage_models import LeakageModel
 from .utils import region_intersects, HookWeakMethod
-from .utils.color_functions import color
+from .utils.color_functions import color, highlight_asmline
 from .loaders import load_selector
 
 
@@ -116,10 +112,6 @@ class Rainbow(abc.ABC):
         self.last_value = 0
         self.last_address = 0
         self.trace = []
-
-        # Prepare the formatters
-        self.asm_hl = NasmLexer()
-        self.asm_fmt = TerminalFormatter(outencoding="utf-8")
 
         # Prepare the emulator and disassembler
         self.emu = uc.Uc(self.UC_ARCH, self.UC_MODE)
@@ -402,15 +394,6 @@ class Rainbow(abc.ABC):
         insn = self.emu.mem_read(addr, 2 * size)
         return self._disassemble_cache(self.disasm.disasm, bytes(insn), addr)
 
-    def print_asmline(self, adr, ins, op_str):
-        """ Pretty-print assembly using pygments syntax highlighting """
-        line = (
-            highlight(f"{ins:<6}  {op_str:<20}", self.asm_hl, self.asm_fmt)
-                .decode()
-                .strip("\n")
-        )
-        print("\n" + color("YELLOW", f"{adr:8X}  ") + line, end=";")
-
     def hook_prolog(self, name, fn):
         """
         Add a call to function 'fn' when 'name' is called during execution.
@@ -569,9 +552,9 @@ class Rainbow(abc.ABC):
         if self.print_config & Print.Code:
             if ins is None:
                 adr, size, _ins, op_str = self.disassemble_single(address, size)
-                self.print_asmline(adr, _ins, op_str)
+                highlight_asmline(adr, _ins, op_str)
             else:
-                self.print_asmline(address, ins.mnemonic, ins.op_str)
+                highlight_asmline(address, ins.mnemonic, ins.op_str)
 
         # Handle the register tracing
         event = None
