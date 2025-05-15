@@ -87,7 +87,7 @@ class Rainbow(abc.ABC):
     ENDIANNESS: str
     PC: int
 
-    last_regs: Optional[List[str]]
+    last_regs: List[str]
     last_reg_values: Optional[Dict[str, int]]
     last_address: Optional[int]
     last_value: Optional[int]
@@ -597,12 +597,9 @@ class Rainbow(abc.ABC):
             if ins is None:
                 ins = self.disassemble_single_detailed(address, size)
                 _, regs_written = ins.regs_access()
-                if regs_written:
-                    regs = list(filter(lambda r: r not in self.IGNORED_REGS and (
-                                not self.trace_config.ignored_registers or r not in self.trace_config.ignored_registers),
-                                       map(ins.reg_name, regs_written)))  # type: ignore
-                else:
-                    regs = None
+                regs = list(filter(lambda r: r not in self.IGNORED_REGS and (
+                            not self.trace_config.ignored_registers or r not in self.trace_config.ignored_registers),
+                                    map(ins.reg_name, regs_written)))  # type: ignore
 
         if self.trace_config.instructions:
             if ins is None:
