@@ -29,7 +29,7 @@ def test_regs_tracer(leakage_model, option, instr):
     emu["r0"] = key_addr
     emu["r1"] = rk_addr + 16
     emu.reset_trace()
-    emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
+    emu.start(emu.functions["AES_128_keyschedule"][0] | 1, 0)
     assert len(emu.trace) > 0
 
 
@@ -51,7 +51,7 @@ def test_regs_tracer_discard(leakage_model, instr):
     emu["r0"] = key_addr
     emu["r1"] = rk_addr + 16
     emu.reset_trace()
-    emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
+    emu.start(emu.functions["AES_128_keyschedule"][0] | 1, 0)
     assert len(emu.trace) > 0
     trace1 = emu.trace
 
@@ -60,7 +60,7 @@ def test_regs_tracer_discard(leakage_model, instr):
     emu["r0"] = key_addr
     emu["r1"] = rk_addr + 16
     emu.reset_trace()
-    emu.start(emu.functions["AES_128_keyschedule"] | 1, 0)
+    emu.start(emu.functions["AES_128_keyschedule"][0] | 1, 0)
     assert len(emu.trace) > 0
     trace2 = emu.trace
     assert trace1 != trace2

@@ -65,8 +65,8 @@ class Rainbow(abc.ABC):
     emu: Optional[uc.Uc]
     disasm: Optional[cs.Cs]
     reg_backup: List[int]
-    functions: Dict[str, int]
-    function_names: Dict[int, str]
+    functions: Dict[str, List[int]]
+    function_names: Dict[int, List[str]]
 
     # Arch. constants
     UC_ARCH: int
@@ -409,7 +409,7 @@ class Rainbow(abc.ABC):
 
         if isinstance(name, str):
             # Stub all function addresses matching this name
-            addrs = [a for a, n in self.function_names.items() if n == name]
+            addrs = [a for a, n in self.function_names.items() if name in n]
             if not addrs:
                 raise IndexError(f"'{name}' could not be found.")
             for addr in addrs:
@@ -435,7 +435,7 @@ class Rainbow(abc.ABC):
 
         if isinstance(name, str):
             # Stub all function addresses matching this name
-            addrs = [a for a, n in self.function_names.items() if n == name]
+            addrs = [a for a, n in self.function_names.items() if name in n]
             if not addrs:
                 raise IndexError(f"'{name}' could not be found.")
             for addr in addrs:
@@ -467,7 +467,7 @@ class Rainbow(abc.ABC):
         # Print function calls
         if address in self.function_names and (self.allow_stubs or self.print_config & Print.Functions):
             # Handle the function call printing
-            f = self.function_names[address]
+            f = "/".join(self.function_names[address])
             if self.print_config & Print.Functions:
                 print(f"{color('MAGENTA', f)}(...) @ 0x{address:x}")
 
