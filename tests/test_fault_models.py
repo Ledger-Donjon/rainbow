@@ -14,7 +14,7 @@ def test_fault_skip():
     # Skip a branch inside storage_containsPin
     emu["r0"] = 0xCAFECAFE
     emu["lr"] = 0xAAAAAAAA
-    begin = emu.functions["storage_containsPin"]
+    begin = emu.functions["storage_containsPin"][0]
     emu.start_and_fault(fault_skip, 15, begin, 0xAAAAAAAA)
 
     # Check that the function returned a faulted value
@@ -33,7 +33,7 @@ def test_fault_stuck_at_zeros():
     # Skip a branch inside storage_containsPin
     emu["r0"] = 0xCAFECAFE
     emu["lr"] = 0xAAAAAAAA
-    begin = emu.functions["storage_containsPin"]
+    begin = emu.functions["storage_containsPin"][0]
     emu.start_and_fault(fault_stuck_at(), 40, begin, 0xAAAAAAAA)
 
     # Check that the function returned a faulted value
@@ -52,7 +52,7 @@ def test_fault_stuck_at_ones():
     # Skip a branch inside storage_containsPin
     emu["r0"] = 0xCAFECAFE
     emu["lr"] = 0xAAAAAAAA
-    begin = emu.functions["storage_containsPin"]
+    begin = emu.functions["storage_containsPin"][0]
     emu.start_and_fault(fault_stuck_at(0xFFFFFFFF), 2, begin, 0xAAAAAAAA)
 
     # Check that the function returned a faulted value

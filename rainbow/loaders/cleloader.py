@@ -41,5 +41,6 @@ def cleloader(path: str, emu, ld_path=(), verbose=False) -> None:
     if verbose:
         print(f"[+] Loading {len(func_symbols)} functions symbol")
     for symbol in func_symbols:
-        emu.functions[symbol.name] = symbol.rebased_addr
-        emu.function_names.update({symbol.rebased_addr: symbol.name})
+        # Map function names to all addresses they refer to, and addresses to all function names
+        emu.functions[symbol.name] = emu.functions.get(symbol.name, []) + [symbol.rebased_addr]
+        emu.function_names[symbol.rebased_addr] = emu.function_names.get(symbol.rebased_addr, []) + [symbol.name]
