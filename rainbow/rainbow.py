@@ -83,7 +83,7 @@ class Rainbow(abc.ABC):
     ENDIANNESS: str
     PC: int
 
-    last_regs: Optional[List[str]]
+    last_regs: List[str]
     last_reg_values: Optional[Dict[str, int]]
     last_address: Optional[int]
     last_value: Optional[int]
@@ -566,15 +566,14 @@ class Rainbow(abc.ABC):
             #  - last_reg_values are register values as they were before the previous instruction
             #
             # So we need to go over last_regs, get their prev values from last_reg_values and get their current values.
-            if self.last_regs:
-                reg_values = {r: uci.reg_read(self.REGS[r]) for r in self.last_regs}
-                leak = sum(
-                    self.trace_config.register(reg_values[r], self.last_reg_values.get(r, 0)) for r in self.last_regs)
-                event = {"type": "code", "register": leak}
+            reg_values = {r: uci.reg_read(self.REGS[r]) for r in self.last_regs}
+            leak = sum(
+                self.trace_config.register(reg_values[r], self.last_reg_values.get(r, 0)) for r in self.last_regs)
+            event = {"type": "code", "register": leak}
 
-                # Store the updated reg values into last_reg_values.
-                for r, val in reg_values.items():
-                    self.last_reg_values[r] = val
+            # Store the updated reg values into last_reg_values.
+            for r, val in reg_values.items():
+                self.last_reg_values[r] = val
 
             # If we haven't disassembled the current instruction to store the regs written to last_regs we do it.
             if ins is None:
@@ -585,7 +584,7 @@ class Rainbow(abc.ABC):
                                 not self.trace_config.ignored_registers or r not in self.trace_config.ignored_registers),
                                        map(ins.reg_name, regs_written)))  # type: ignore
                 else:
-                    regs = None
+                    regs = []
 
         if self.trace_config.instructions:
             if ins is None:
