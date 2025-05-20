@@ -89,12 +89,15 @@ class Rainbow(abc.ABC):
     last_value: Optional[int]
     trace: List[Any]
 
-    block_hook: Optional[int]
     mem_hook: Optional[int]
     code_hook: Optional[int]
 
-    def __init__(self, print_config: Print = Print(0), trace_config: TraceConfig = TraceConfig(),
-                 allow_breakpoints: bool = False, allow_stubs: bool = False):
+    def __init__(
+        self,
+        print_config: Print = Print(0),
+        trace_config: TraceConfig = TraceConfig(),
+        allow_breakpoints: bool = False,
+    ):
         self.breakpoints = set()
         self.functions = {}
         self.function_names = {}
@@ -104,7 +107,6 @@ class Rainbow(abc.ABC):
         self.print_config = print_config
         self.trace_config = trace_config
         self.allow_breakpoints = allow_breakpoints
-        self.allow_stubs = allow_stubs
 
         # Leak storage
         self.last_reg_values = {}
@@ -311,12 +313,17 @@ class Rainbow(abc.ABC):
         return pc_fault
 
     def setup(self):
-        """Add base hooks to the engine."""
-        # We need the block hook only if we are
-        # printing functions or need to handle stubs.
-        # if self.print_config & Print.Functions or self.allow_stubs:
-        self.block_hook = self.emu.hook_add(uc.UC_HOOK_BLOCK,
-                                            HookWeakMethod(self._block_hook))
+        """Setup engine hooks."""
+        # Hook functions calls for printing
+        if self.print_config & Print.Functions:
+            for addr, name in self.function_names.items():
+                self.emu.hook_add(
+                    uc.UC_HOOK_BLOCK,
+                    self._print_function_hook,
+                    begin=addr,
+                    end=addr,
+                    user_data=name,
+                )
 
         # We need the mem hook only if we are
         # printing memory or tracing memory values or addresses.
@@ -394,91 +401,72 @@ class Rainbow(abc.ABC):
         insn = self.emu.mem_read(addr, 2 * size)
         return self._disassemble_cache(self.disasm.disasm, bytes(insn), addr)
 
+    def _get_addrs(self, name_or_addr):
+        if isinstance(name_or_addr, str):
+            # Stub all function addresses matching this name
+            addrs = [a for a, n in self.function_names.items() if n == name_or_addr]
+            if not addrs:
+                raise IndexError(f"'{name_or_addr}' could not be found.")
+            return addrs
+        elif isinstance(name_or_addr, int):
+            # Name is only one address
+            return [name_or_addr]
+        raise TypeError("name_or_addr should be function name or address")
+
+    def _stub_hook(self, _uci, _address, _size, userdata):
+        """Call user stub set up with hook_prolog/hook_bypass."""
+        fn, bypass = userdata
+        if fn is not None:
+            fn(self)
+        if bypass:
+            # Make the function return early
+            self.return_force()
+
     def hook_prolog(self, name, fn):
         """
         Add a call to function 'fn' when 'name' is called during execution.
         After executing 'fn, execution resumes into 'name'.
         """
-        if not self.allow_stubs:
-            raise ValueError("Cannot use stubs, allow_stubs is False.")
-
-        def to_hook(x):
-            if fn is not None:
-                fn(x)
-            return False
-
-        if isinstance(name, str):
-            # Stub all function addresses matching this name
-            addrs = [a for a, n in self.function_names.items() if n == name]
-            if not addrs:
-                raise IndexError(f"'{name}' could not be found.")
-            for addr in addrs:
-                self.stubbed_functions[addr] = to_hook
-        elif isinstance(name, int):
-            # Name is an address
-            self.stubbed_functions[name] = to_hook
-        else:
-            raise TypeError("name should be function name or address")
+        for addr in self._get_addrs(name):
+            self.stubbed_functions[addr] = self.emu.hook_add(
+                uc.UC_HOOK_BLOCK,
+                HookWeakMethod(self._stub_hook),
+                begin=addr,
+                end=addr,
+                user_data=(fn, False),
+            )
 
     def hook_bypass(self, name, fn=None):
         """
         Add a call to function 'fn' when 'name' is called during execution.
         After executing 'fn', execution returns to the caller.
         """
-        if not self.allow_stubs:
-            raise ValueError("Cannot use stubs, allow_stubs is False.")
-
-        def to_hook(x):
-            if fn is not None:
-                fn(x)
-            return True
-
-        if isinstance(name, str):
-            # Stub all function addresses matching this name
-            addrs = [a for a, n in self.function_names.items() if n == name]
-            if not addrs:
-                raise IndexError(f"'{name}' could not be found.")
-            for addr in addrs:
-                self.stubbed_functions[addr] = to_hook
-        elif isinstance(name, int):
-            # Name is an address
-            self.stubbed_functions[name] = to_hook
-        else:
-            raise TypeError("name should be function name or address")
+        for addr in self._get_addrs(name):
+            self.stubbed_functions[addr] = self.emu.hook_add(
+                uc.UC_HOOK_BLOCK,
+                HookWeakMethod(self._stub_hook),
+                begin=addr,
+                end=addr,
+                user_data=(fn, True),
+            )
 
     def remove_hook(self, name):
         """Remove the hook."""
-        if not self.allow_stubs:
-            raise ValueError("Cannot use stubs, allow_stubs is False.")
-        del self.stubbed_functions[name]
+        for addr in self._get_addrs(name):
+            if addr in self.stubbed_functions:
+                self.emu.hook_del(self.stubbed_functions[addr])
+                del self.stubbed_functions[addr]
 
     def remove_hooks(self):
-        """Remove the hooked functions."""
-        if not self.allow_stubs:
-            raise ValueError("Cannot use stubs, allow_stubs is False.")
-        self.stubbed_functions = {}
+        """Remove all hooked functions."""
+        for addr, hook in self.stubbed_functions.items():
+            self.emu.hook_del(hook)
+            del self.stubbed_functions[addr]
 
-    def _block_hook(self, _uci, address: int, _size, _):
-        """
-        Hook called on every jump to a basic block that checks if a known
-        address+function is redefined in the user's python script and if so,
-        calls that instead.
-        """
-        # Print function calls
-        if address in self.function_names and (self.allow_stubs or self.print_config & Print.Functions):
-            # Handle the function call printing
-            f = self.function_names[address]
-            if self.print_config & Print.Functions:
-                print(f"{color('MAGENTA', f)}(...) @ 0x{address:x}")
-
-        # If stub is enabled and set at this address, run it
-        if self.allow_stubs:
-            stub_func = self.stubbed_functions.get(address)
-            if stub_func is not None:
-                r = stub_func(self)
-                if r:
-                    # If stub returns True, then make the function return early
-                    self.return_force()
+    @staticmethod
+    def _print_function_hook(_uci, address: int, _size, name: str):
+        """Print function call."""
+        print(f"{color('MAGENTA', name)}(...) @ 0x{address:x}")
 
     def _mem_hook(self, uci, access, address, size, value, _):
         # Get the value
@@ -588,11 +576,13 @@ class Rainbow(abc.ABC):
                     regs = None
 
         if self.trace_config.instructions:
-            if ins is None:
-                ins = self.disassemble_single_detailed(address, size)
+            if ins is not None:
+                address, mnemonic, op_str = ins.address, ins.mnemonic, ins.op_str
+            else:
+                address, _size, mnemonic, op_str = self.disassemble_single(address, size)
             if event is None:
                 event = {"type": "code"}
-            event["instruction"] = f"{ins.address:8X} {ins.mnemonic:<6}  {ins.op_str}"
+            event["instruction"] = f"{address:8X} {mnemonic:<6}  {op_str}"
         if event is not None:
             self.trace.append(event)
         self.last_regs = regs

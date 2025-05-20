@@ -52,11 +52,12 @@ class rainbow_arm(Rainbow):
     def return_force(self):
         self["pc"] = self["lr"]
 
-    def _block_hook(self, uci, address, size, user_data):
-        if self.thumb_bit == 0:
-            # switch disassembler to ARM mode
-            self.disasm.mode = cs.CS_MODE_ARM
-        else:
-            self.disasm.mode = cs.CS_MODE_THUMB
+    def disassemble_single(self, addr: int, size: int):
+        # Switch disassembler to ARM or Thumb mode
+        self.disasm.mode = cs.CS_MODE_ARM if self.thumb_bit == 0 else cs.CS_MODE_THUMB
+        return super().disassemble_single(addr, size)
 
-        super()._block_hook(uci, address | self.thumb_bit, size, user_data)
+    def disassemble_single_detailed(self, addr: int, size: int) -> cs.CsInsn:
+        # Switch disassembler to ARM or Thumb mode
+        self.disasm.mode = cs.CS_MODE_ARM if self.thumb_bit == 0 else cs.CS_MODE_THUMB
+        return super().disassemble_single_detailed(addr, size)

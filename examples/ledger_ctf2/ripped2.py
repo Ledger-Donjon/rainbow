@@ -21,7 +21,7 @@ def rand(em):
     em["rax"] = 7
 
 
-e = rainbow_x64(trace_config=TraceConfig(mem_value=Identity()), allow_stubs=True)
+e = rainbow_x64(trace_config=TraceConfig(mem_value=Identity()))
 e.load("ctf2", typ=".elf")
 e.setup()
 

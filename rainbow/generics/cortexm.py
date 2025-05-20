@@ -50,6 +50,13 @@ class rainbow_cortexm(Rainbow):
 
         self.emu.hook_add(uc.UC_HOOK_INTR, HookWeakMethod(self.intr_hook))
 
+        self.emu.hook_add(
+            uc.UC_HOOK_BLOCK,
+            HookWeakMethod(self.endmem_hook),
+            begin=0xfffffff0,
+            end=0xffffffff,
+        )
+
     def reset_stack(self):
         self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
 
@@ -81,7 +88,7 @@ class rainbow_cortexm(Rainbow):
     def return_force(self):
         self["pc"] = self["lr"]
 
-    def _block_hook(self, uci, address, size, user_data):
+    def endmem_hook(self, _uci, address, _size, _user_data):
         if (address & 0xfffffff0) == 0xfffffff0:
             is_psp = (address >> 2) & 1
             is_unpriv = (address >> 3) & 1
@@ -96,8 +103,3 @@ class rainbow_cortexm(Rainbow):
 
             self['ipsr'] = 0
             self['sp'] = sp + 32
-            return
-
-        # In ARM Cortex-M, all code is in thumb mode
-        # So all function addresses are odd
-        super()._block_hook(uci, address | 1, size, user_data)
