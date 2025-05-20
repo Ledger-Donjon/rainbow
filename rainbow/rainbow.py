@@ -48,17 +48,22 @@ class Print(Flag):
 class TraceConfig:
     """Tracing configuration."""
 
-    def __init__(self,
-                 mem_address: Optional[LeakageModel] = None,
-                 mem_value: Optional[LeakageModel] = None,
-                 register: Optional[LeakageModel] = None,
-                 instruction: bool = False,
-                 ignored_registers: Optional[Set[str]] = None):
+    def __init__(
+        self,
+        mem_address: Optional[LeakageModel] = None,
+        mem_value: Optional[LeakageModel] = None,
+        register: Optional[LeakageModel] = None,
+        instruction: bool = False,
+        ignored_registers: Optional[Set[str]] = None,
+        only_when_registers: bool = True,
+    ):
         self.mem_address = mem_address
         self.mem_value = mem_value
         self.register = register
         self.instructions = instruction
         self.ignored_registers = ignored_registers
+        # When true, only output register leakage when at least one register is written
+        self.only_when_registers = only_when_registers
 
 
 class Rainbow(abc.ABC):
@@ -583,7 +588,7 @@ class Rainbow(abc.ABC):
             #  - last_reg_values are register values as they were before the previous instruction
             #
             # So we need to go over last_regs, get their prev values from last_reg_values and get their current values.
-            if self.last_regs:
+            if self.last_regs or not self.trace_config.only_when_registers:
                 reg_values = {r: uci.reg_read(self.REGS[r]) for r in self.last_regs}
                 leak = sum(
                     self.trace_config.register(reg_values[r], self.last_reg_values.get(r, 0)) for r in self.last_regs)
