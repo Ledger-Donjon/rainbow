@@ -24,7 +24,6 @@ A fault model is defined as a function that takes only a Rainbow instance as
 argument, then updates the emulator state according to their model and returns
 nothing.
 """
-import unicorn as uc
 from .rainbow import Rainbow, Print
 from .utils.color_functions import color
 
@@ -34,7 +33,7 @@ def fault_skip(emu: Rainbow):
 
     Right now this only handles ARM emulation.
     """
-    if emu.UC_ARCH != uc.UC_ARCH_ARM:
+    if not emu.arch.triplet.startswith("arm-"):
         raise NotImplementedError("Only ARM emulation is supported.")
     # Get current instruction size
     current_pc = emu["pc"]
@@ -64,7 +63,7 @@ def fault_stuck_at(value: int = 0):
     """
 
     def f(emu: Rainbow):
-        if emu.UC_ARCH != uc.UC_ARCH_ARM:
+        if not emu.arch.triplet.startswith("arm-"):
             raise NotImplementedError("Only ARM emulation is supported.")
         # Get registers updated by current instruction
         current_pc = emu["pc"]

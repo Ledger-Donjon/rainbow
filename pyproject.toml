@@ -15,7 +15,8 @@ dependencies = [
     "intelhex",
     "pygments",
     "numpy",
-    "PyQt5"
+    "PyQt5",
+    "archinfo"
 ]
 readme = "README.md"
 classifiers = [

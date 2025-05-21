@@ -25,6 +25,7 @@ from typing import Callable, Tuple, Optional, List, Dict, Set, Any
 import capstone as cs
 import unicorn as uc
 from unicorn import UcError
+import archinfo
 
 from .leakage_models import LeakageModel
 from .utils import region_intersects, HookWeakMethod
@@ -64,24 +65,20 @@ class Rainbow(abc.ABC):
     breakpoints: Set[int]
     emu: Optional[uc.Uc]
     disasm: Optional[cs.Cs]
+    regs: Dict[str, int]
     reg_backup: List[int]
     functions: Dict[str, int]
     function_names: Dict[int, str]
 
     # Arch. constants
-    UC_ARCH: int
-    UC_MODE: int
-    CS_ARCH: int
-    CS_MODE: int
-    WORD_SIZE: int
-    REGS: Dict[str, int]
+    ARCH_NAME: str
     OTHER_REGS: Dict[str, int]
     INTERNAL_REGS: List[str]
     IGNORED_REGS: List[str]
     STACK_ADDR: int
     STACK: Tuple[int, int]
-    ENDIANNESS: str
-    PC: int
+    PC_NAME: str
+    SP_NAME: List[str]
 
     last_regs: Optional[List[str]]
     last_reg_values: Optional[Dict[str, int]]
@@ -114,9 +111,13 @@ class Rainbow(abc.ABC):
         self.trace = []
 
         # Prepare the emulator and disassembler
-        self.emu = uc.Uc(self.UC_ARCH, self.UC_MODE)
-        self.disasm = cs.Cs(self.CS_ARCH, self.CS_MODE)
-        self.disasm.detail = True
+        self.arch = archinfo.arch_from_id(self.ARCH_NAME)
+        self.emu = self.arch.unicorn
+        self.disasm = self.arch.capstone
+        self.regs = {
+            name[len(self.arch.uc_prefix + 'REG_'):].lower(): getattr(self.arch.uc_const, name)
+            for name in dir(self.arch.uc_const) if "_REG" in name
+        }
         self.map_space(*self.STACK)
 
         self.reset_stack()
@@ -195,18 +196,13 @@ class Rainbow(abc.ABC):
             self.emu.mem_write(r_start, bytes(data))
 
     def __setitem__(self, inp, val):
-        """ Sets a register, memory address or memory range to a value. Handles writing ints or bytes. 
+        """Sets a register, memory address or memory range to a value. Handles writing ints or bytes.
 
         Examples :
-
-         - Write 0x1234 to register r0
-
-          emulator['r0'] = 0x1234  
-          
-         - Zero-out addresses 0x4000 to 0x4300
-         
-          emulator[0x4000:0x4300] = 0
-         """
+         - Write 0x1234 to register r0: `emulator['r0'] = 0x1234`
+         - Zero-out addresses 0x4000 to 0x4300: `emulator[0x4000:0x4300] = 0`
+        """
+        endness = "little" if self.arch.memory_endness == archinfo.Endness.LE else "big"
 
         # convert value
         if isinstance(val, int):
@@ -215,7 +211,7 @@ class Rainbow(abc.ABC):
                 value = bytes(1)
             else:
                 length = math.ceil(val.bit_length() / 8)
-                value = val.to_bytes(length, self.ENDIANNESS)
+                value = val.to_bytes(length, endness)
         elif isinstance(val, bytes):
             length = len(val)
             value = val
@@ -225,9 +221,11 @@ class Rainbow(abc.ABC):
         if isinstance(inp, str):  # regname
             v = self.OTHER_REGS.get(inp, None)
             if v is not None:
-                self.emu.mem_write(v, val.to_bytes(self.WORD_SIZE, self.ENDIANNESS))
+                self.emu.mem_write(v, val.to_bytes(self.arch.bits // 8, endness))
+            elif inp in self.regs:
+                self.emu.reg_write(self.regs[inp], val)
             else:
-                self.emu.reg_write(self.REGS[inp], val)
+                raise Exception(f"Unknown register {inp}")
         elif isinstance(inp, int):
             self.map_space(inp, inp + length)
             self.emu.mem_write(inp, value)
@@ -235,7 +233,7 @@ class Rainbow(abc.ABC):
             if inp.step is not None:
                 return NotImplementedError
             self.map_space(inp.start, inp.stop)
-            v = val.to_bytes(length, self.ENDIANNESS)
+            v = val.to_bytes(length, endness)
             self.emu.mem_write(inp.start, v * (inp.stop - inp.start))
         else:
             raise Exception("Invalid range type for write: ", type(inp), inp)
@@ -247,12 +245,12 @@ class Rainbow(abc.ABC):
             if v is not None:
                 return self.emu.reg_read(v)
             else:
-                return self.emu.reg_read(self.REGS[s])
+                return self.emu.reg_read(self.regs[s])
         elif isinstance(s, int):
             if s & 3:
                 size = 1
             else:
-                size = self.WORD_SIZE
+                size = self.arch.bits // 8
             return self.emu.mem_read(s, size)
         if isinstance(s, slice):
             return self.emu.mem_read(s.start, s.stop - s.start)
@@ -267,7 +265,7 @@ class Rainbow(abc.ABC):
             self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
             self.emu.emu_stop()
-            pc = self.emu.reg_read(self.PC)
+            pc = self[self.PC_NAME]
             raise RuntimeError(f"Emulation crashed at 0x{pc:X}") from e
 
     def start_and_fault(self, fault_model, fault_index: int, begin: int, end: int, *args, **kwargs) -> int:
@@ -341,10 +339,10 @@ class Rainbow(abc.ABC):
             raise ValueError("Cannot use breakpoints, allow_breakpoints is False.")
         self.breakpoints.add(address)
 
-    @abc.abstractmethod
     def reset_stack(self):
         """Reset the stack pointer."""
-        raise NotImplementedError
+        for name in self.SP_NAME:
+            self[name] = self.STACK_ADDR
 
     def reset_regs(self):
         """Reset the state of the internal registers to zero."""
@@ -484,7 +482,8 @@ class Rainbow(abc.ABC):
         # Get the value
         if access == uc.UC_MEM_READ:
             access_type = "mem_read"
-            value = int.from_bytes(uci.mem_read(address, size), self.ENDIANNESS, signed=False)
+            endness = "little" if self.arch.memory_endness == archinfo.Endness.LE else "big"
+            value = int.from_bytes(uci.mem_read(address, size), endness, signed=False)
         else:
             access_type = "mem_write"
 
@@ -567,7 +566,7 @@ class Rainbow(abc.ABC):
             #
             # So we need to go over last_regs, get their prev values from last_reg_values and get their current values.
             if self.last_regs:
-                reg_values = {r: uci.reg_read(self.REGS[r]) for r in self.last_regs}
+                reg_values = {r: uci.reg_read(self.regs[r]) for r in self.last_regs}
                 leak = sum(
                     self.trace_config.register(reg_values[r], self.last_reg_values.get(r, 0)) for r in self.last_regs)
                 event = {"type": "code", "register": leak}
