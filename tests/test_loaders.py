@@ -7,7 +7,7 @@ def test_elfloader_cortexm_aes():
     This firmware does not contain segments.
     """
     emu = rainbow_arm()
-    emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
+    emu.load("examples/CortexM_AES/aes.bin")
 
 
 def test_elfloader_trezor():
@@ -25,7 +25,7 @@ def test_elfloader_trezor():
 def test_hexloader_trezor():
     """Test loading HW_analysis trezor.hex"""
     emu = rainbow_arm()
-    emu.load("examples/HW_analysis/trezor.hex")
+    emu.load("examples/HW_analysis/trezor.hex", arch="arm")
 
 
 def test_elfloader_hexloader_equal():
@@ -33,7 +33,7 @@ def test_elfloader_hexloader_equal():
     emu1 = rainbow_arm()
     emu1.load("examples/HW_analysis/trezor.elf")
     emu2 = rainbow_arm()
-    emu2.load("examples/HW_analysis/trezor.hex")
+    emu2.load("examples/HW_analysis/trezor.hex", arch="arm")
     assert list(emu1.emu.mem_regions()) == list(emu2.emu.mem_regions())
     for reg_start, reg_end, _ in emu1.emu.mem_regions():
         assert emu1[reg_start:reg_end] == emu2[reg_start:reg_end]

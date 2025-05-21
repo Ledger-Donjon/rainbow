@@ -29,7 +29,7 @@ from unicorn import UcError
 from .leakage_models import LeakageModel
 from .utils import region_intersects, HookWeakMethod
 from .utils.color_functions import color, highlight_asmline
-from .loaders import load_selector
+from .utils.loaders import cleloader
 
 
 class Print(Flag):
@@ -258,8 +258,8 @@ class Rainbow(abc.ABC):
             return self.emu.mem_read(s.start, s.stop - s.start)
 
     def load(self, filename, *args, **kwargs) -> Optional[int]:
-        """ Load a file into the emulator's memory """
-        return load_selector(filename, self, *args, **kwargs)
+        """Load a file into the emulator's memory using CLE"""
+        return cleloader(filename, self, *args, **kwargs)
 
     def start(self, begin, end, timeout=0, count=0) -> None:
         """ Begin emulation """
