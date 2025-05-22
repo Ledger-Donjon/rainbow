@@ -29,7 +29,7 @@ def srand(em):
 # We'd like to trace everything we can
 # - memory accesses
 # - modified registers
-e = rainbow_x64(trace_config=TraceConfig(mem_value=HammingWeight(), register=HammingWeight()), allow_stubs=True)
+e = rainbow_x64(trace_config=TraceConfig(mem_value=HammingWeight(), register=HammingWeight()))
 e.stubbed_functions = {
     "time": time,
     "clock_gettime": clock_gettime,
