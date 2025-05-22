@@ -17,25 +17,18 @@
 # Copyright 2019 Victor Servant, Ledger SAS
 # Copyright 2023 Jan Jancar
 
-import unicorn as uc
 import capstone as cs
 from rainbow.rainbow import Rainbow
 
 
 class rainbow_arm(Rainbow):
-    UC_ARCH = uc.UC_ARCH_ARM
-    UC_MODE = uc.UC_MODE_ARM
-    CS_ARCH = cs.CS_ARCH_ARM
-    CS_MODE = cs.CS_MODE_ARM
+    ARCH_NAME = "arm"
     STACK_ADDR = 0xb0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "pc", "lr"]
     IGNORED_REGS = set()
-    WORD_SIZE = 4
-    ENDIANNESS = "little"
-    PC = uc.arm_const.UC_ARM_REG_PC
-    REGS = {name[len('UC_ARM_REG_'):].lower(): getattr(uc.arm_const, name) for name in dir(uc.arm_const) if
-            "_REG" in name}
+    PC_NAME = "pc"
+    SP_NAME = ["sp"]
     OTHER_REGS = {}
 
     @property
@@ -45,9 +38,6 @@ class rainbow_arm(Rainbow):
 
     def start(self, begin, *args, **kwargs):
         return super().start(begin | self.thumb_bit, *args, **kwargs)
-
-    def reset_stack(self):
-        self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
 
     def return_force(self):
         self["pc"] = self["lr"]

@@ -18,27 +18,20 @@
 # Copyright 2023 Jan Jancar
 
 import unicorn as uc
-import capstone as cs
 from struct import unpack
 from rainbow.rainbow import Rainbow
 from rainbow.utils import HookWeakMethod
 
 
 class rainbow_cortexm(Rainbow):
-    UC_ARCH = uc.UC_ARCH_ARM
-    UC_MODE = uc.UC_MODE_THUMB | uc.UC_MODE_MCLASS
-    CS_ARCH = cs.CS_ARCH_ARM
-    CS_MODE = cs.CS_MODE_THUMB | cs.CS_MODE_MCLASS
+    ARCH_NAME = "cortexm"
     STACK_ADDR = 0x90000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "cpsr",
                      "pc", "lr"]
     IGNORED_REGS = set()
-    WORD_SIZE = 4
-    ENDIANNESS = "little"
-    PC = uc.arm_const.UC_ARM_REG_PC
-    REGS = {name[len('UC_ARM_REG_'):].lower(): getattr(uc.arm_const, name) for name in dir(uc.arm_const) if
-                 "_REG" in name}
+    PC_NAME = "pc"
+    SP_NAME = ["sp"]
     OTHER_REGS = {}
 
     def __init__(self, *args, **kwargs):
@@ -49,9 +42,6 @@ class rainbow_cortexm(Rainbow):
         self.map_space(0xfffffff0, 0xffffffff)
 
         self.emu.hook_add(uc.UC_HOOK_INTR, HookWeakMethod(self.intr_hook))
-
-    def reset_stack(self):
-        self.emu.reg_write(uc.arm_const.UC_ARM_REG_SP, self.STACK_ADDR)
 
     def intr_hook(self, uci, intno, data):
         # Handle ARM MMU exceptions introduced in Unicorn 2
