@@ -37,7 +37,7 @@ e.stubbed_functions = {
 }
 
 # load the elf
-e.load("ctf2", typ=".elf")
+e.load("ctf2", typ=".elf", except_missing_libs=False)
 e.setup()
 
 

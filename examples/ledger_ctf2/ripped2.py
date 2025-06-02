@@ -22,7 +22,7 @@ def rand(em):
 
 
 e = rainbow_x64(trace_config=TraceConfig(mem_value=Identity()), allow_stubs=True)
-e.load("ctf2", typ=".elf")
+e.load("ctf2", typ=".elf", except_missing_libs=False)
 e.setup()
 
 e.hook_bypass("time", time)

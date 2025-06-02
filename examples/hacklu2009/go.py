@@ -10,7 +10,7 @@ from rainbow.generics import rainbow_x86
 from rainbow import TraceConfig, HammingWeight
 
 e = rainbow_x86(trace_config=TraceConfig(register=HammingWeight()))
-e.load('crackme.exe')
+e.load('crackme.exe', except_missing_libs=False)
 e.setup()
 
 

@@ -10,7 +10,7 @@ from lascar import Session, TraceBatchContainer
 
 def generate_targetf():
     e = rainbow_x86(trace_config=TraceConfig(register=HammingWeight(), mem_value=Identity(), instruction=True, mem_address=Identity()))
-    e.load("libnative-lib_x86.so")
+    e.load("libnative-lib_x86.so", except_missing_libs=False)
     e.setup()
 
     target_func = "_Z48TfcqPqf1lNhu0DC2qGsAAeML0SEmOBYX4jpYUnyT8qYWIlEqPhS_"
