@@ -8,10 +8,10 @@ on:
 
 jobs:
   build:
+    # TODO: add windows-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        # TODO: add windows-latest
-        os: [ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
