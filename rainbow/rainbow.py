@@ -464,9 +464,9 @@ class Rainbow(abc.ABC):
 
     def remove_hooks(self):
         """Remove all hooked functions."""
-        for addr, hook in self.stubbed_functions.items():
+        for hook in self.stubbed_functions.values():
             self.emu.hook_del(hook)
-            del self.stubbed_functions[addr]
+        self.stubbed_functions.clear()
 
     @staticmethod
     def _print_function_hook(_uci, address: int, _size, name: str):
