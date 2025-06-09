@@ -136,7 +136,7 @@ class Rainbow(abc.ABC):
     def PAGE_SHIFT(self) -> int:  # noqa
         return self.PAGE_SIZE.bit_length() - 1
 
-    def map_space(self, start: int, end: int, verbose: bool = False):
+    def map_space(self, start: int, end: int, perms: str = "rwx", verbose: bool = False):
         """
         Maps area into the unicorn emulator between start and end, or nothing if it was already mapped.
         Only completes missing portions if there is overlapping with a previously-mapped segment
@@ -145,6 +145,7 @@ class Rainbow(abc.ABC):
 
         :param start: Region start address, included.
         :param end: Region end address, included.
+        :param perms: Memory space permissions, defaults to "rwx".
         :param verbose: Whether to print mapping info.
         """
         if end < start:
@@ -192,8 +193,18 @@ class Rainbow(abc.ABC):
         if verbose:
             print(f"[*] Mapping 0x{start:X}-0x{end:X}")
 
+        uc_perms = 0
+        for perm in perms:
+            if perm == "r":
+                uc_perms |= uc.UC_PROT_READ
+            elif perm == "w":
+                uc_perms |= uc.UC_PROT_WRITE
+            elif perm == "x":
+                uc_perms |= uc.UC_PROT_EXEC
+            else:
+                raise ValueError(f"Unknown permission {perm!r} in {perms!r}")
         try:
-            self.emu.mem_map(start, end - start + 1)
+            self.emu.mem_map(start, end - start + 1, uc_perms)
         except UcError as e:
             raise ValueError from e
 
