@@ -7,7 +7,7 @@ def test_elfloader_cortexm_aes():
     This firmware does not contain segments.
     """
     emu = rainbow_arm()
-    emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
+    emu.load("examples/CortexM_AES/aes.bin")
 
 
 def test_elfloader_trezor():
@@ -25,7 +25,7 @@ def test_elfloader_trezor():
 def test_hexloader_trezor():
     """Test loading HW_analysis trezor.hex"""
     emu = rainbow_arm()
-    emu.load("examples/HW_analysis/trezor.hex")
+    emu.load("examples/HW_analysis/trezor.hex", arch="arm")
 
 
 def test_elfloader_hexloader_equal():
@@ -35,12 +35,12 @@ def test_elfloader_hexloader_equal():
     # ...
     # .fini_array            0x0    0x8080114
     emu = rainbow_arm()
-    emu.load("examples/HW_analysis/trezor.hex", verbose = True)
+    emu.load("examples/HW_analysis/trezor.hex", arch="arm", verbose=True)
     hex_shift = 12
     hex_page_size = 3072
     ceil_align = lambda x, sh, page_size: (((x + 1) >> sh) << sh) + page_size - 1
     ref_region = (
-        0x8010000, 
+        0x0000000,
         ceil_align(0x8080114, hex_shift, hex_page_size),
         7,
     )

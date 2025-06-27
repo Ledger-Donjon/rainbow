@@ -19,14 +19,14 @@
 import cle
 
 
-def cleloader(path: str, emu, ld_path=(), verbose=False, except_missing_libs=True) -> None:
+def cleloader(path: str, emu, arch=None, ld_path=(), verbose=False, except_missing_libs=True) -> None:
     """Load binary using CLE
 
     It will try to load their associated libraries and resolves imports.
     """
     if verbose:
         print(f"[+] Opening {path}")
-    ld = cle.Loader(path, except_missing_libs=except_missing_libs, ld_path=ld_path)
+    ld = cle.Loader(path, except_missing_libs=except_missing_libs, ld_path=ld_path, arch=arch)
 
     # Map memory
     if verbose:

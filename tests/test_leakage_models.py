@@ -15,7 +15,7 @@ def test_regs_tracer(leakage_model, option, instr):
     tr = TraceConfig(instruction=instr)
     setattr(tr, option, leakage_model())
     emu = rainbow_arm(trace_config=tr)
-    emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
+    emu.load("examples/CortexM_AES/aes.bin")
     emu.setup()
 
     # Setup data
@@ -37,7 +37,7 @@ def test_regs_tracer(leakage_model, option, instr):
 @pytest.mark.parametrize("instr", all_instr)
 def test_regs_tracer_discard(leakage_model, instr):
     emu = rainbow_arm(trace_config=TraceConfig(register=leakage_model(), instruction=instr))
-    emu.load("examples/CortexM_AES/aes.bin", typ=".elf")
+    emu.load("examples/CortexM_AES/aes.bin")
     emu.setup()
 
     # Setup data
