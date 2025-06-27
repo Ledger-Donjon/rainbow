@@ -45,9 +45,10 @@ def test_hook_prolog_missing_name():
         emu.hook_prolog("strtol_blabla", strtol)
 
 
+@pytest.mark.skip(reason="'strtol' is not mapped to the same place across platforms")
 def test_remove_hooks():
     emu = rainbow_x64()
-    emu.load("examples/ledger_ctf2/ctf2", typ=".elf")
+    emu.load("examples/ledger_ctf2/ctf2", typ=".elf", except_missing_libs=False)
     emu.setup()
 
     emu.hook_bypass("strtol")
