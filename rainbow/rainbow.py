@@ -429,53 +429,76 @@ class Rainbow(abc.ABC):
             return [name_or_addr]
         raise TypeError("name_or_addr should be function name or address")
 
-    def _stub_hook(self, _uci, _address, _size, userdata):
+    def _stub_hook(self, _uci, address, _size, userdata):
         """Call user stub set up with hook_prolog/hook_bypass."""
-        fn, bypass = userdata
+        fn, bypass, trigger_after_exec, trigger_count = userdata
+
+        # Count hook executions count
+        hook, count = self.stubbed_functions[address]
+        self.stubbed_functions[address] = (hook, count + 1)
+        if count < trigger_after_exec:
+            return  # hook does not trigger yet
+        if trigger_count and count + 1 >= trigger_after_exec + trigger_count:
+            # last time the hook triggers
+            self.emu.hook_del(self.stubbed_functions[address][0])
+            del self.stubbed_functions[address]
+
         if fn is not None:
             fn(self)
         if bypass:
             # Make the function return early
             self.return_force()
 
-    def hook_prolog(self, name, fn):
+    def hook_prolog(self, name, fn, trigger_after_exec=0, trigger_count=0):
         """
         Add a call to function 'fn' when 'name' is called during execution.
         After executing 'fn, execution resumes into 'name'.
+
+        The hook will be triggered only after reaching the execution specified
+        in `trigger_after_exec`, by default being the first execution.
+        If `trigger_count` non null, the hook will be removed after triggered
+        the specified number of times.
         """
         for addr in self._get_addrs(name):
-            self.stubbed_functions[addr] = self.emu.hook_add(
+            hook = self.emu.hook_add(
                 uc.UC_HOOK_BLOCK,
                 HookWeakMethod(self._stub_hook),
                 begin=addr,
                 end=addr,
-                user_data=(fn, False),
+                user_data=(fn, False, trigger_after_exec, trigger_count),
             )
+            self.stubbed_functions[addr] = (hook, 0)
 
-    def hook_bypass(self, name, fn=None):
+    def hook_bypass(self, name, fn=None, trigger_after_exec=0, trigger_count=0):
         """
         Add a call to function 'fn' when 'name' is called during execution.
         After executing 'fn', execution returns to the caller.
+
+        The hook will be triggered only after reaching the execution specified
+        in `trigger_after_exec`, by default being the first execution.
+        If `trigger_count` non null, the hook will be removed after triggered
+        the specified number of times.
         """
         for addr in self._get_addrs(name):
-            self.stubbed_functions[addr] = self.emu.hook_add(
+            hook = self.emu.hook_add(
                 uc.UC_HOOK_BLOCK,
                 HookWeakMethod(self._stub_hook),
                 begin=addr,
                 end=addr,
-                user_data=(fn, True),
+                user_data=(fn, True, trigger_after_exec, trigger_count),
             )
+            self.stubbed_functions[addr] = (hook, 0)
 
     def remove_hook(self, name):
         """Remove the hook."""
         for addr in self._get_addrs(name):
             if addr in self.stubbed_functions:
-                self.emu.hook_del(self.stubbed_functions[addr])
+                self.emu.hook_del(self.stubbed_functions[addr][0])
                 del self.stubbed_functions[addr]
 
     def remove_hooks(self):
         """Remove all hooked functions."""
-        for hook in self.stubbed_functions.values():
+        for hook, _ in self.stubbed_functions.values():
             self.emu.hook_del(hook)
         self.stubbed_functions.clear()
 
