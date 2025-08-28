@@ -5,7 +5,6 @@ from rainbow.generics import rainbow_x64
 def test_hook_bypass_ctf2():
     emu = rainbow_x64()
     emu.load("tests/ledger_ctf2/ctf2", typ=".elf", except_missing_libs=False)
-    emu.setup()
 
     def strtol(e):
         e["rax"] = 0
@@ -19,7 +18,6 @@ def test_hook_bypass_ctf2():
 def test_hook_bypass_ctf2_empty():
     emu = rainbow_x64()
     emu.load("tests/ledger_ctf2/ctf2", typ=".elf", except_missing_libs=False)
-    emu.setup()
 
     emu[0xCAFE1000] = b"test"
     emu["rdx"] = 0xCAFE1000
@@ -49,7 +47,6 @@ def test_hook_prolog_missing_name():
 def test_remove_hooks():
     emu = rainbow_x64()
     emu.load("tests/ledger_ctf2/ctf2", typ=".elf", except_missing_libs=False)
-    emu.setup()
 
     emu.hook_bypass("strtol")
     assert 0x1648c10 in emu.stubbed_functions

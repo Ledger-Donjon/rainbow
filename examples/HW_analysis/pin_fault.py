@@ -20,7 +20,6 @@ def setup_emulator(trace_config=TraceConfig()) -> rainbow_stm32:
     print("Setting up emulator")
     e = rainbow_stm32(trace_config=trace_config)
     e.load("trezor.elf")
-    e.setup()
 
     # as in the side-channel example, this is the location of the reference
     # pin in Flash

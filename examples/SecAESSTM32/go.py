@@ -61,7 +61,6 @@ def f_aes(e, key, input_):
 if __name__ == "__main__":
     e = rainbow_stm32f215(print_config=Print.Functions, trace_config=TraceConfig(register=HammingWeight()))
     e.load('firmware.elf')
-    e.setup()
 
     return_addr = 0
     # map it to prevent an unmapped fetch exception

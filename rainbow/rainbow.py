@@ -94,9 +94,6 @@ class Rainbow(abc.ABC):
     last_value: Optional[int]
     trace: List[Any]
 
-    mem_hook: Optional[int]
-    code_hook: Optional[int]
-
     def __init__(
         self,
         print_config: Print = Print(0),
@@ -125,6 +122,12 @@ class Rainbow(abc.ABC):
         self.disasm = cs.Cs(self.CS_ARCH, self.CS_MODE)
         self.disasm.detail = True
         self.map_space(*self.STACK)
+
+        # Prepare emulator hooks
+        self._emu_functions_hook: Dict[Tuple[int, str], int] = {}
+        self._emu_memory_hook: Optional[int] = None
+        self._emu_code_hook: Optional[int] = None
+        self._setup_hooks()
 
         self.reset_stack()
 
@@ -281,6 +284,7 @@ class Rainbow(abc.ABC):
 
     def start(self, begin, end, timeout=0, count=0) -> None:
         """ Begin emulation """
+        self._setup_hooks()  # update hooks if needed
         try:
             self.emu.emu_start(begin, end, timeout=timeout, count=count)
         except Exception as e:
@@ -328,31 +332,56 @@ class Rainbow(abc.ABC):
         self.start(self["pc"], end, *args, **kwargs)
         return pc_fault
 
-    def setup(self):
-        """Setup engine hooks."""
+    def _setup_hooks(self):
+        """Update engine hooks with current configuration"""
         # Hook functions calls for printing
         if self.print_config & Print.Functions:
             for addr, name in self.function_names.items():
-                self.emu.hook_add(
+                if (addr, name) in self._emu_functions_hook:
+                    continue  # already hooked
+                self._emu_functions_hook[(addr, name)] = self.emu.hook_add(
                     uc.UC_HOOK_BLOCK,
                     self._print_function_hook,
                     begin=addr,
                     end=addr,
                     user_data=name,
                 )
+            # Clear orphan function hooks
+            for (addr, name), hook in self._emu_functions_hook.items():
+                if (addr, name) not in self.function_names.items():
+                    self.emu.hook_del(hook)
+                    del self._emu_functions_hook[(addr, name)]
 
         # We need the mem hook only if we are
         # printing memory or tracing memory values or addresses.
-        if self.print_config & Print.Memory or self.trace_config.mem_value or self.trace_config.mem_address:
-            self.mem_hook = self.emu.hook_add(uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
-                                              HookWeakMethod(self._mem_hook))
+        if (
+            self.print_config & Print.Memory
+            or self.trace_config.mem_value
+            or self.trace_config.mem_address
+        ):
+            if self._emu_memory_hook is None:
+                self._emu_memory_hook = self.emu.hook_add(
+                    uc.UC_HOOK_MEM_READ | uc.UC_HOOK_MEM_WRITE,
+                    HookWeakMethod(self._mem_hook),
+                )
+        elif self._emu_memory_hook is not None:
+            self.emu.hook_del(self._emu_memory_hook)
 
         # We need the code hook only if we are
         # printing code or registers, tracing registers or instruction or need to handle breakpoints.
-        if self.print_config & (
-                Print.Code | Print.Registers) or self.trace_config.register or self.trace_config.instructions or self.allow_breakpoints:
-            self.code_hook = self.emu.hook_add(uc.UC_HOOK_CODE,
-                                               HookWeakMethod(self._code_hook))
+        if (
+            self.print_config & (Print.Code | Print.Registers)
+            or self.trace_config.register
+            or self.trace_config.instructions
+            or self.allow_breakpoints
+        ):
+            if self._emu_code_hook is None:
+                self._emu_code_hook = self.emu.hook_add(
+                    uc.UC_HOOK_CODE,
+                    HookWeakMethod(self._code_hook),
+                )
+        elif self._emu_code_hook is not None:
+            self.emu.hook_del(self._emu_code_hook)
 
     def remove_bkpt(self, address):
         if not self.allow_breakpoints:

@@ -11,7 +11,6 @@ from rainbow import TraceConfig, HammingWeight
 
 e = rainbow_x86(trace_config=TraceConfig(register=HammingWeight()))
 e.load('crackme.exe', except_missing_libs=False)
-e.setup()
 
 
 def encrypt(plain):
