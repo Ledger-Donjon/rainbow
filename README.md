@@ -64,7 +64,6 @@ Load a binary:
 
 ```python
 e.load('file', typ='.elf')
-e.setup()
 ```
 
 File type is guessed on the extension when possible (.elf, .hex).
@@ -105,7 +104,6 @@ from rainbow import TraceConfig, HammingWeight
 
 e = rainbow_stm32f215(trace_config=TraceConfig(register=HammingWeight()))
 e.load('file', typ='.elf')
-e.setup()
 
 e.start(start_address)
 

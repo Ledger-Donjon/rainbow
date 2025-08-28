@@ -12,7 +12,6 @@ from visplot import plot
 
 e = rainbow_arm(trace_config=TraceConfig(register=HammingWeight()))
 e.load("aes.bin", typ=".elf")
-e.setup()
 
 
 def aes_encrypt(key, plaintext):

@@ -60,7 +60,6 @@ if __name__ == "__main__":
     print("Setting up emulator")
     e = rainbow_stm32(trace_config=TraceConfig(register=HammingWeight(), instruction=True))
     e.load("trezor.elf")
-    e.setup()
 
     print("Generating", N, "traces")
 

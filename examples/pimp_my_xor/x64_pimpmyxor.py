@@ -8,7 +8,6 @@ from rainbow.generics import rainbow_x64
 
 e = rainbow_x64(print_config=Print.Code)
 e.load("pimp_my_xor", typ=".elf", except_missing_libs=False)
-e.setup()
 
 # Read the obfuscated password
 hidden_string = e[0x404060 : 0x404060 + 0x2E]
