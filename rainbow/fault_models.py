@@ -30,15 +30,12 @@ from .utils.color_functions import color
 
 
 def fault_skip(emu: Rainbow):
-    """Increase program counter to skip current instruction
-
-    Right now this only handles ARM emulation.
-    """
-    if emu.UC_ARCH != uc.UC_ARCH_ARM:
-        raise NotImplementedError("Only ARM emulation is supported.")
+    """Increase program counter to skip current instruction"""
+    if emu.UC_ARCH not in [uc.UC_ARCH_ARM, uc.UC_ARCH_ARM64]:
+        raise NotImplementedError("Only ARM and aarch64 emulations are supported.")
     # Get current instruction size
     current_pc = emu["pc"]
-    ins = emu.disassemble_single(current_pc, 4)
+    ins = emu.disassemble_single(current_pc, 8)
     if ins is None:
         raise RuntimeError("Skipping an invalid instruction")
     _, ins_size, _, _ = ins
@@ -50,9 +47,11 @@ def fault_skip(emu: Rainbow):
 
     # Skip one instruction
     # Save and restore CPSR register as Unicorn changes its value
-    cpsr = emu["cpsr"]
+    if emu.UC_ARCH == uc.UC_ARCH_ARM:
+        cpsr = emu["cpsr"]
     emu["pc"] = current_pc + ins_size
-    emu["cpsr"] = cpsr
+    if emu.UC_ARCH == uc.UC_ARCH_ARM:
+        emu["cpsr"] = cpsr
 
 
 def fault_stuck_at(value: int = 0):
@@ -60,15 +59,14 @@ def fault_stuck_at(value: int = 0):
     destination register
 
     This will run current instruction and increase program counter.
-    Right now this only handles ARM emulation.
     """
 
     def f(emu: Rainbow):
-        if emu.UC_ARCH != uc.UC_ARCH_ARM:
-            raise NotImplementedError("Only ARM emulation is supported.")
+        if emu.UC_ARCH not in [uc.UC_ARCH_ARM, uc.UC_ARCH_ARM64]:
+            raise NotImplementedError("Only ARM and aarch64 emulations are supported.")
         # Get registers updated by current instruction
         current_pc = emu["pc"]
-        ins = emu.disassemble_single_detailed(current_pc, 4)
+        ins = emu.disassemble_single_detailed(current_pc, 8)
         if ins is None:
             raise RuntimeError("Faulting an invalid instruction")
         _, regs_written = ins.regs_access()
