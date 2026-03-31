@@ -25,7 +25,7 @@ def aes_encrypt(key, plaintext):
     # AES_128_keyschedule(key, rk+16)
     e["r0"] = key_addr
     e["r1"] = rk_addr + 16
-    e.start(e.functions["AES_128_keyschedule"] | 1, 0)
+    e.start(e.functions["AES_128_keyschedule"][0], 0)
 
     buf_in = 0xDEAD2000
     buf_out = 0xDEAD3000
@@ -37,7 +37,7 @@ def aes_encrypt(key, plaintext):
     e["r1"] = buf_in
     e["r2"] = buf_out
     # e.trace_reset()
-    e.start(e.functions["AES_128_encrypt"] | 1, 0)
+    e.start(e.functions["AES_128_encrypt"][0], 0)
 
     # Hamming weight + noise to pretend we're on a real target
     trace = np.array([event["register"] for event in e.trace]) + np.random.normal(

@@ -43,7 +43,7 @@ def f_aes(e, key, input_):
     e[e['sp']] = output_p
 
     # rest stays to 0
-    e.start(e.functions['aes'] | 1, 0)
+    e.start(e.functions['aes'][0], 0)
 
     if e['r0']:
         print('ERROR !')

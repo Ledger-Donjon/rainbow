@@ -6,6 +6,7 @@ from rainbow import HammingWeight, TraceConfig
 from rainbow.devices.stm32 import rainbow_stm32f215 as rainbow_stm32
 from rainbow.fault_models import fault_skip
 from rainbow.utils.plot import viewer
+from rainbow.utils.color_functions import highlight_asmline 
 
 # Pick any reference pin (STORED_PIN) and a different input pin
 # Goal is to make 'storage_containsPin' function return a non-null
@@ -58,13 +59,13 @@ for i in range(1, N):
     pc = 0
     try:
         # Run i instruction, then inject skip, then run
-        pc = e.start_and_fault(fault_skip, i, e.functions['storage_containsPin'], 0xaaaaaaaa, count=100)
+        pc = e.start_and_fault(fault_skip, i, e.functions['storage_containsPin'][0], 0xaaaaaaaa, count=100)
     except RuntimeError:
         # Fault crashed the emulation
         total_crashes += 1
         crash_trace[i] = 1
         d = e.disassemble_single(pc, 4)
-        e.print_asmline(pc, d[2], d[3])
+        highlight_asmline(pc, d[2], d[3])
         pc += d[1]
         print("crashed")
         continue
@@ -73,7 +74,7 @@ for i in range(1, N):
 
     # Print current instruction
     d = e.disassemble_single(pc, 4)
-    e.print_asmline(pc, d[2], d[3])
+    highlight_asmline(pc, d[2], d[3])
     pc += d[1]
 
     if result(e):
