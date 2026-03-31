@@ -24,7 +24,7 @@ def generate_targetf():
         # e[e.STACK_ADDR] = 0xDEADBEEF
         e[e.STACK_ADDR + 4] = 0xBADC0FE0
         e[e.STACK_ADDR + 8] = 0xA5A5A5A5
-        e.start(e.functions[target_func], 0, count=length)
+        e.start(e.functions[target_func][0], 0, count=length)
         trace_data = []
         for event in e.trace:
             if "register" in event.keys():

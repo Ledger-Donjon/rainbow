@@ -20,7 +20,7 @@ def containsPin(e, pin_attempt, stored_pin):
     e['r0'] = input_pin_addr
     e['lr'] = 0xaaaaaaaa
 
-    e.start(e.functions['storage_containsPin'], 0xaaaaaaaa)
+    e.start(e.functions['storage_containsPin'][0], 0xaaaaaaaa)
 
 
 def show_nicv(values, traces, nr_digits):
