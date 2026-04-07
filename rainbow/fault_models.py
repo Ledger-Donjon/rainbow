@@ -24,7 +24,6 @@ A fault model is defined as a function that takes only a Rainbow instance as
 argument, then updates the emulator state according to their model and returns
 nothing.
 """
-import unicorn as uc
 from .rainbow import Rainbow, Print
 from .utils.color_functions import color
 
@@ -34,11 +33,9 @@ def fault_skip(emu: Rainbow):
 
     Right now this only handles ARM emulation.
     """
-    if emu.UC_ARCH != uc.UC_ARCH_ARM:
-        raise NotImplementedError("Only ARM emulation is supported.")
     # Get current instruction size
-    current_pc = emu["pc"]
-    ins = emu.disassemble_single(current_pc, 4)
+    current_pc = emu[emu.PC_NAME]
+    ins = emu.disassemble_single(current_pc, emu.arch.max_inst_bytes)
     if ins is None:
         raise RuntimeError("Skipping an invalid instruction")
     _, ins_size, _, _ = ins
@@ -49,10 +46,12 @@ def fault_skip(emu: Rainbow):
         )
 
     # Skip one instruction
-    # Save and restore CPSR register as Unicorn changes its value
-    cpsr = emu["cpsr"]
-    emu["pc"] = current_pc + ins_size
-    emu["cpsr"] = cpsr
+    # Save and restore CPSR register if it exists as Unicorn changes its value
+    if "cpsr" in emu.regs:
+        cpsr = emu["cpsr"]
+    emu[emu.PC_NAME] = current_pc + ins_size
+    if "cpsr" in emu.regs:
+        emu["cpsr"] = cpsr
 
 
 def fault_stuck_at(value: int = 0):
@@ -64,11 +63,9 @@ def fault_stuck_at(value: int = 0):
     """
 
     def f(emu: Rainbow):
-        if emu.UC_ARCH != uc.UC_ARCH_ARM:
-            raise NotImplementedError("Only ARM emulation is supported.")
         # Get registers updated by current instruction
-        current_pc = emu["pc"]
-        ins = emu.disassemble_single_detailed(current_pc, 4)
+        current_pc = emu[emu.PC_NAME]
+        ins = emu.disassemble_single_detailed(current_pc, emu.arch.max_inst_bytes)
         if ins is None:
             raise RuntimeError("Faulting an invalid instruction")
         _, regs_written = ins.regs_access()
@@ -80,7 +77,7 @@ def fault_stuck_at(value: int = 0):
 
         # Inject the fault
         for reg_name in regs_written:
-            if reg_name.lower() in ["cpsr", "pc", "lr"]:
+            if reg_name.lower() in ["cpsr", emu.PC_NAME, "lr"]:
                 continue  # ignore
 
             emu[reg_name] = value

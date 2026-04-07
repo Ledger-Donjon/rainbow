@@ -17,29 +17,18 @@
 # Copyright 2019 Victor Servant, Ledger SAS
 # Copyright 2023 Jan Jancar
 
-import unicorn as uc
-import capstone as cs
 from rainbow.rainbow import Rainbow
 
 
 class rainbow_aarch64(Rainbow):
-    UC_ARCH = uc.UC_ARCH_ARM64
-    UC_MODE = uc.UC_MODE_ARM
-    CS_ARCH = cs.CS_ARCH_ARM64
-    CS_MODE = cs.CS_MODE_ARM
+    ARCH_NAME = "aarch64"
     STACK_ADDR = 0x20000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"x{i}" for i in range(30)]
     IGNORED_REGS = set()
-    WORD_SIZE = 8
-    ENDIANNESS = "little"
-    PC = uc.arm64_const.UC_ARM64_REG_PC
-    REGS = {name[len('UC_ARM64_REG_'):].lower(): getattr(uc.arm64_const, name) for name in dir(uc.arm64_const) if
-            "_REG" in name}
+    PC_NAME = "pc"
+    SP_NAME = ["sp"]
     OTHER_REGS = {}
-
-    def reset_stack(self):
-        self.emu.reg_write(uc.arm64_const.UC_ARM64_REG_SP, self.STACK_ADDR)
 
     def return_force(self):
         self["pc"] = self["lr"]

@@ -20,28 +20,33 @@
 import unicorn as uc
 import capstone as cs
 from rainbow.rainbow import Rainbow
+import archinfo
+
+class ArchM64k(archinfo.ArchPcode):
+    def __init__(self, endness=archinfo.Endness.BE):
+        super().__init__("68000:BE:32:default")
+
+    cs_arch = cs.CS_ARCH_M68K
+    cs_mode = cs.CS_MODE_M68K_000
+    uc_arch = uc.UC_ARCH_M68K
+    uc_mode = 0
+    uc_const = uc.m68k_const
+    uc_prefix = "UC_M68K_"
+
+archinfo.register_arch([r"m68k.*"], 32, archinfo.Endness.BE, ArchM64k)
 
 
 class rainbow_m68k(Rainbow):
-    UC_ARCH = uc.UC_ARCH_M68K
-    UC_MODE = uc.UC_MODE_BIG_ENDIAN
-    CS_ARCH = cs.CS_ARCH_M68K
-    CS_MODE = cs.CS_MODE_M68K_000
+    ARCH_NAME = "m68k"
     STACK_ADDR = 0xB0000000
     STACK = (STACK_ADDR - 0x200, STACK_ADDR + 32)
     INTERNAL_REGS = [f"d{i}" for i in range(8)] + [f"a{i}" for i in range(8)] + ["pc"]
     IGNORED_REGS = set()
-    WORD_SIZE = 4
-    ENDIANNESS = "big"
-    PC = uc.m68k_const.UC_M68K_REG_PC
-    REGS = {name[len('UC_M68K_REG_'):].lower(): getattr(uc.m68k_const, name) for name in dir(uc.m68k_const) if
-            "_REG" in name}
+    PC_NAME = "pc"
+    SP_NAME = ["a7"]
     OTHER_REGS = {}
-
-    def reset_stack(self):
-        self.emu.reg_write(uc.m68k_const.UC_M68K_REG_A7, self.STACK_ADDR)
 
     def return_force(self):
         ret = self[self["a7"]]
-        self["a7"] += self.WORD_SIZE
+        self["a7"] += 4
         self["pc"] = int.from_bytes(ret, "big")
