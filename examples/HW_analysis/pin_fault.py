@@ -91,7 +91,7 @@ e = setup_emulator(trace_config=TraceConfig(register=HammingWeight(), instructio
 e['r0'] = 0xcafecafe
 e['lr'] = 0xaaaaaaaa
 
-e.start(e.functions['storage_containsPin'], 0xaaaaaaaa)
+e.start(e.functions['storage_containsPin'][0], 0xaaaaaaaa)
 
 trace = np.array([event["register"] for event in e.trace if "register" in event], dtype=np.uint8)
 fault_trace = trace.max() - np.array(fault_trace, dtype=np.uint8)[:trace.shape[0]] * trace.max()
